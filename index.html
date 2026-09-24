@@ -272,6 +272,11 @@
     <button type="button" id="rescueBtn">Copy my data out now</button>
   </div>
 
+  <div class="card" id="healthCard" style="display:none;">
+    <h2 id="healthTitle">Storage check</h2>
+    <div id="healthBody"></div>
+  </div>
+
   <header>
     <h1>Pain &amp; Cycle Tracker</h1>
     <p>Logging pain, energy and bleeding to check whether symptoms follow a cycle since the Mirena.</p>
@@ -279,14 +284,23 @@
     <div class="storage-note" id="storageNote" style="display:none;"></div>
   </header>
 
+  <div class="card" id="profileCard">
+    <h2>My details</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">Stored on this device only. Never sent anywhere. This text appears at the top of your clinical export.</p>
+    <label class="field-label">Clinical background</label>
+    <textarea id="backgroundField" placeholder="Your diagnosis, when and how it was confirmed, sites affected, past surgery and what it found, current treatment." style="min-height:110px;"></textarea>
+    <button type="button" class="link-btn" id="saveBackgroundBtn">Save my details</button>
+    <span id="backgroundSaved" style="font-size:0.78rem;color:var(--sage);margin-left:10px;"></span>
+  </div>
+
   <div class="card" id="coilCard">
-    <h2>Mirena coil</h2>
+    <h2>Coil / device</h2>
     <div class="coil-facts">
-      <div class="coil-row"><span class="coil-label">Fitted</span><span class="coil-val" id="coilFitted">30 March 2026</span></div>
+      <div class="coil-row"><span class="coil-label">Fitted</span><span class="coil-val" id="coilFitted">Not set</span></div>
       <div class="coil-row"><span class="coil-label">Day</span><span class="coil-val" id="coilDay">—</span></div>
-      <div class="coil-row"><span class="coil-label">Due for removal</span><span class="coil-val" id="coilDue">30 March 2031</span></div>
+      <div class="coil-row"><span class="coil-label">Due for removal</span><span class="coil-val" id="coilDue">—</span></div>
     </div>
-    <button type="button" class="link-btn" id="editCoilBtn">Change fitted date</button>
+    <button type="button" class="link-btn" id="editCoilBtn">Set fitted date</button>
     <div id="coilEdit" style="display:none;margin-top:10px;">
       <div class="meta-row">
         <input type="date" id="coilDate">
@@ -497,6 +511,11 @@ const DURATIONS = [
 // Anything at or above this is treated as sustained rather than episodic
 const SUSTAINED_HOURS = 8;
 
+// Referred-pain groupings. Sciatic-pattern pain (buttock, back of thigh, below the
+// knee) suggests deeper involvement than ligament referral and is reported separately.
+const SCIATIC_ZONES = ['buttock_l','buttock_r','backthigh_l','backthigh_r','belowknee_l','belowknee_r'];
+const REFERRED_ZONES = ['groin_l','groin_r','hip_l','hip_r','innerthigh_l','innerthigh_r','frontthigh_l','frontthigh_r'];
+
 // What she was doing at the MOMENT the pain hit. Distinct from day-level activities:
 // this is an immediate trigger, not a whole-day exposure, so it is never fed to the
 // day-level correlation engine.
@@ -530,8 +549,14 @@ const ZONES = [
   {id:'pelvic_r', label:'Right ovary — adhesion (known active site)', view:'front', cx:94, cy:145},
   {id:'cervical', label:'Cervical (excised 2021 — watch)', view:'front', cx:75, cy:155},
   {id:'suprapubic', label:'Central pelvic', view:'front', cx:75, cy:167},
-  {id:'leg_l', label:'Left leg / hip referral', view:'front', cx:60, cy:210},
-  {id:'leg_r', label:'Right leg / hip referral', view:'front', cx:90, cy:210},
+  {id:'groin_l', label:'Left groin', view:'front', cx:63, cy:172},
+  {id:'groin_r', label:'Right groin', view:'front', cx:87, cy:172},
+  {id:'hip_l', label:'Left hip / outer', view:'front', cx:40, cy:168},
+  {id:'hip_r', label:'Right hip / outer', view:'front', cx:110, cy:168},
+  {id:'innerthigh_l', label:'Left inner thigh', view:'front', cx:69, cy:205},
+  {id:'innerthigh_r', label:'Right inner thigh', view:'front', cx:81, cy:205},
+  {id:'frontthigh_l', label:'Left front thigh', view:'front', cx:55, cy:212},
+  {id:'frontthigh_r', label:'Right front thigh', view:'front', cx:95, cy:212},
 
   {id:'kidney_l', label:'Left kidney area', view:'back', cx:58, cy:100},
   {id:'kidney_r', label:'Right kidney area', view:'back', cx:92, cy:100},
@@ -539,6 +564,12 @@ const ZONES = [
   {id:'lowback_r', label:'Right lower back', view:'back', cx:92, cy:140},
   {id:'sacrum', label:'Central lower back / sacrum', view:'back', cx:75, cy:155},
   {id:'rectal', label:'Rectal / perineal', view:'back', cx:75, cy:180},
+  {id:'buttock_l', label:'Left buttock', view:'back', cx:60, cy:168},
+  {id:'buttock_r', label:'Right buttock', view:'back', cx:90, cy:168},
+  {id:'backthigh_l', label:'Left back of thigh', view:'back', cx:58, cy:212},
+  {id:'backthigh_r', label:'Right back of thigh', view:'back', cx:92, cy:212},
+  {id:'belowknee_l', label:'Left below the knee', view:'back', cx:58, cy:248},
+  {id:'belowknee_r', label:'Right below the knee', view:'back', cx:92, cy:248},
 ];
 
 let entries = [];
@@ -547,10 +578,10 @@ let clinicalEvents = [];
 // SEED DATA - carried forward when this tracker is rebuilt.
 // Populated from the user's backup before any new version is issued, so a new
 // build never opens empty. Merged on first run only; never overwrites newer data.
-const SEED_DATA = {"coilFitted": "2026-03-30", "entries": [{"id": "1790166254626", "datetime": "2026-09-23T13:24", "pain": 7, "tags": ["Pain", "Low energy", "Sharp / catching", "Deep / internal"], "zones": ["cervical", "suprapubic"], "activities": ["Desk / office day", "Slept well", "Period-like cramping"], "duration": "minutes", "onset": ["Lifting something", "Twisting / turning"], "notes": ""}, {"id": "1788778947279", "datetime": "2026-09-07T12:02", "pain": 4, "tags": ["Pain", "Twinge"], "zones": ["pelvic_r", "cervical", "suprapubic", "lowback_r"], "activities": ["Desk / office day", "Poor sleep", "Period-like cramping"], "duration": "seconds", "onset": ["Sitting"], "notes": "Stressed, anxiety, heart palpitations"}, {"id": "1788640256160", "datetime": "2026-09-05T21:29", "pain": 5, "tags": ["Pain", "Sharp / catching", "Pulling / tugging", "Deep / internal"], "zones": ["suprapubic", "cervical"], "activities": ["Mostly rested", "Long time sitting"], "duration": null, "onset": [], "notes": ""}], "clinicalEvents": []};
+const SEED_DATA = null;   // no personal data in the public code
 // ---------------------------------------------------------------------------
 
-const COIL_FITTED_DEFAULT = '2026-03-30';   // fitted 30 March 2026
+const COIL_FITTED_DEFAULT = '';   // set by the user in their own profile, not in the code
 const COIL_LIFESPAN_YEARS = 5;              // NHS: Mirena stays in 5 years
 let meta = {coilDate: COIL_FITTED_DEFAULT};
 let selectedTags = new Set();
@@ -1255,7 +1286,13 @@ function coilDayCount(when){
 function renderDayCounter(){
   const el = document.getElementById('dayCounter');
   const days = coilDayCount(new Date());
-  if(days === null){ el.textContent = ''; return; }
+  if(days === null){
+    el.textContent = '';
+    const f = document.getElementById('coilFitted'); if(f) f.textContent = 'Not set';
+    const d = document.getElementById('coilDue'); if(d) d.textContent = '—';
+    const dd = document.getElementById('coilDay'); if(dd) dd.textContent = '—';
+    return;
+  }
   el.textContent = `Day ${days} since the coil was fitted`;
 
   const fitted = new Date(meta.coilDate);
@@ -1715,6 +1752,75 @@ async function importBackup(text){
   return {addedEntries, addedEvents, skipped, saved: savedE && savedV};
 }
 
+// ---------- self checks ----------
+// Nobody is monitoring this app remotely. It has to notice its own problems.
+function lastEntryDate(){
+  if(!entries.length) return null;
+  return entries.map(e=>new Date(e.datetime)).sort((a,b)=>b-a)[0];
+}
+
+function renderHealthCheck(){
+  const card = document.getElementById('healthCard');
+  const body = document.getElementById('healthBody');
+  const title = document.getElementById('healthTitle');
+  if(!card) return;
+
+  const problems = [];
+
+  if(!storageHealthy){
+    problems.push({
+      level:'bad',
+      msg:'Nothing can be written to this device right now. Anything you log will be lost when you close the app. Export your data before doing anything else.'
+    });
+  }
+
+  const last = lastEntryDate();
+  if(last){
+    const days = Math.floor((new Date() - last) / 86400000);
+    if(days >= 7){
+      problems.push({
+        level:'warn',
+        msg:'Nothing logged for ' + days + ' days. If that is wrong, your data may have been cleared - check the entry count below against what you expect.'
+      });
+    }
+  }
+
+  // Monthly backup nudge
+  try{
+    const lastBackup = window.localStorage.getItem('paintracker_lastBackupDate');
+    if(entries.length >= 5){
+      const due = !lastBackup || (new Date() - new Date(lastBackup)) > 30*86400000;
+      if(due){
+        problems.push({
+          level:'warn',
+          msg:'Time for a backup. Your data lives only on this phone, so take a copy roughly monthly.',
+          action:'backup'
+        });
+      }
+    }
+  }catch(e){}
+
+  if(!problems.length){ card.style.display = 'none'; body.innerHTML = ''; return; }
+
+  const worst = problems.some(p=>p.level==='bad') ? 'bad' : 'warn';
+  card.style.display = '';
+  card.style.borderColor = worst==='bad' ? 'var(--burgundy)' : 'var(--gold)';
+  title.textContent = worst==='bad' ? 'Problem saving your data' : 'Worth checking';
+  body.innerHTML = problems.map(p=>
+    '<p style="font-size:0.88rem;margin:6px 0;">' + p.msg + '</p>' +
+    (p.action==='backup' ? '<button type="button" class="export-btn" id="healthBackupBtn" style="width:100%;margin-top:6px;">Make a backup now</button>' : '')
+  ).join('');
+
+  const hb = document.getElementById('healthBackupBtn');
+  if(hb){
+    hb.onclick = ()=>{
+      showTextFallback('Backup - keep this safe', buildClaudePayload(), 'tracker-backup.json');
+      try{ window.localStorage.setItem('paintracker_lastBackupDate', new Date().toISOString()); }catch(e){}
+      renderHealthCheck();
+    };
+  }
+}
+
 // ---------- today view ----------
 function renderToday(){
   const list = document.getElementById('todayList');
@@ -1772,6 +1878,7 @@ function renderToday(){
 // ---------- render all ----------
 function renderAll(){
   setStorageHealth(storageHealthy);
+  renderHealthCheck();
   renderToday();
   renderDayCounter();
   renderActivityInsights();
@@ -1889,9 +1996,8 @@ function exportEventsCsv(){
 }
 
 function buildSummaryText(){
-  if(entries.length === 0 && clinicalEvents.length === 0){
-    return 'No entries or clinical events logged yet.';
-  }
+  // Still produce a usable document when nothing is logged yet: the background and
+  // device details are worth having in front of a clinician on their own.
   let text = `PAIN & CYCLE TRACKER — SUMMARY\n`;
   text += `Generated: ${new Date().toLocaleString('en-GB')}\n\n`;
   if(meta.coilDate){
@@ -1900,12 +2006,10 @@ function buildSummaryText(){
     text += `Current Mirena coil fitted: ${fmt(new Date(meta.coilDate))} (day ${coilDayCount(new Date())} at time of writing).\n`;
     text += `Not scheduled for removal until ${fmt(due)} under standard 5-year guidance.\n`;
   }
-  text += `CLINICAL BACKGROUND\n`;
-  text += `Stage 3 endometriosis confirmed by laparoscopy, Aug 2021 (MRI flagged July 2021).\n`;
-  text += `Sites at diagnosis: cervical, both ovaries, bladder/urinary tract.\n`;
-  text += `All disease excised at that surgery EXCEPT scar tissue adhering the right ovary to the uterus, which could not be removed. This remains the only known active site.\n`;
-  text += `Outcome of that surgery: approximately three years symptom-controlled.\n`;
-  text += `First Mirena coil expired; replacement delayed ~1 year. New coil fitted 30 March 2026. Gynae triage ~2 weeks later confirmed an endometriosis flare.\n\n`;
+  if(meta.background && meta.background.trim()){
+    text += `CLINICAL BACKGROUND\n`;
+    text += meta.background.trim() + `\n\n`;
+  }
 
   if(entries.length){
     const sorted = entries.slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
@@ -1941,12 +2045,12 @@ function buildSummaryText(){
     const mechEntries = entries.filter(e=>e.tags.some(t=>MECHANICAL_TAGS.includes(t)));
     const mechAndRight = mechEntries.filter(e=>e.zones.includes('pelvic_r')).length;
 
-    text += `RIGHT OVARY — KNOWN ADHESION SITE\n`;
-    text += `Entries marking the right ovary: ${rightOv.length} of ${total}\n`;
-    text += `Average pain when right ovary is involved: ${rightOvAvg} / 10\n`;
+    text += `PRIMARY SITE\n`;
+    text += `Entries marking the primary site: ${rightOv.length} of ${total}\n`;
+    text += `Average pain when the primary site is involved: ${rightOvAvg} / 10\n`;
     text += `Average pain at other pelvic sites: ${otherAvg} / 10\n`;
-    text += `Severe episodes (7+/10) involving the right ovary: ${rightOvSevere}\n`;
-    text += `Entries with a mechanical/adhesion-type trigger: ${mechEntries.length}, of which ${mechAndRight} also mark the right ovary\n`;
+    text += `Severe episodes (7+/10) involving the primary site: ${rightOvSevere}\n`;
+    text += `Entries with a mechanical/adhesion-type trigger: ${mechEntries.length}, of which ${mechAndRight} also mark the primary site\n`;
     text += `Note: adhesion pain is typically mechanical (movement, position, bowel loading) rather than inflammatory, so normal bloods, absent fever and normal BP do not exclude it.\n\n`;
 
     const twinges = entries.filter(e=>e.tags.includes(TWINGE_TAG));
@@ -2000,10 +2104,37 @@ function buildSummaryText(){
       if(atRest > onMovement){
         text += `Note: pain more often begins at rest than on movement. This is not the pattern expected of adhesion traction alone and supports assessment for an inflammatory, visceral or neuropathic contribution.\n\n`;
       } else if(onMovement > 0){
-        text += `Note: pain more often begins on movement or position change, consistent with traction on the known right ovarian adhesion.\n\n`;
+        text += `Note: pain more often begins on movement or position change, consistent with traction on adherent tissue.\n\n`;
       } else {
         text += `\n`;
       }
+    }
+
+    const sciatic = entries.filter(e=>(e.zones||[]).some(z=>SCIATIC_ZONES.includes(z)));
+    const referred = entries.filter(e=>(e.zones||[]).some(z=>REFERRED_ZONES.includes(z)));
+    if(sciatic.length || referred.length){
+      text += `REFERRED PAIN\n`;
+      if(referred.length){
+        const rz = {};
+        referred.forEach(e=>(e.zones||[]).filter(z=>REFERRED_ZONES.includes(z)).forEach(z=>{
+          const lab = (ZONES.find(x=>x.id===z)||{}).label; if(lab) rz[lab] = (rz[lab]||0)+1;
+        }));
+        text += `Groin, hip and thigh: ${referred.length} episodes (${Object.entries(rz).map(([k,v])=>k+' '+v).join(', ')}).\n`;
+      }
+      if(sciatic.length){
+        const sz = {};
+        sciatic.forEach(e=>(e.zones||[]).filter(z=>SCIATIC_ZONES.includes(z)).forEach(z=>{
+          const lab = (ZONES.find(x=>x.id===z)||{}).label; if(lab) sz[lab] = (sz[lab]||0)+1;
+        }));
+        const below = sciatic.filter(e=>(e.zones||[]).some(z=>z.indexOf('belowknee')===0)).length;
+        const sAvg = (sciatic.reduce((s,e)=>s+e.pain,0)/sciatic.length).toFixed(1);
+        text += `Sciatic distribution (buttock, posterior thigh, below knee): ${sciatic.length} episodes, average intensity ${sAvg} / 10 (${Object.entries(sz).map(([k,v])=>k+' '+v).join(', ')}).\n`;
+        text += `Of these, ${below} extended below the knee.\n`;
+        text += `Note: pain in a sciatic distribution is not explained by pelvic adhesions alone and raises the question of deeper infiltrating disease or nerve involvement. Worth assessment on that basis.\n`;
+      } else {
+        text += `No pain recorded in a sciatic distribution.\n`;
+      }
+      text += `\n`;
     }
 
     const restPain = entries.filter(e=>e.tags.some(t=>REST_PAIN_TAGS.includes(t)));
@@ -2071,7 +2202,7 @@ function buildClaudePayload(){
     coilFitted: meta.coilDate || null,
     coilDayToday: coilDayCount(new Date()),
     coilDueForRemoval: meta.coilDate ? (()=>{ const d=new Date(meta.coilDate); d.setFullYear(d.getFullYear()+COIL_LIFESPAN_YEARS); return d.toISOString().slice(0,10); })() : null,
-    diagnosis: 'Stage 3 endometriosis, laparoscopy Aug 2021 — cervical, both ovaries, bladder/urinary tract. All excised at that surgery EXCEPT scar tissue adhering the right ovary to the uterus (unremovable, still present, only known active site). Approx 3 pain-free years followed. Coil replaced 30 March 2026; flare confirmed at gynae triage 2 weeks later.',
+    diagnosis: meta.background || null,
     entries: entries,   // each entry may carry an 'activities' array
     clinicalEvents: clinicalEvents
   };
@@ -2112,6 +2243,16 @@ async function init(){
     document.getElementById('editCoilBtn').style.display = '';
     renderAll();
   };
+  document.getElementById('backgroundField').value = meta.background || '';
+  document.getElementById('saveBackgroundBtn').onclick = async ()=>{
+    meta.background = document.getElementById('backgroundField').value;
+    const ok = await saveMetaToStorage();
+    const note = document.getElementById('backgroundSaved');
+    note.textContent = ok ? 'Saved' : 'Could not save';
+    note.style.color = ok ? 'var(--sage)' : 'var(--burgundy)';
+    setTimeout(()=>{ note.textContent = ''; }, 2500);
+  };
+
   document.getElementById('editCoilBtn').onclick = ()=>{
     document.getElementById('coilEdit').style.display = '';
     document.getElementById('editCoilBtn').style.display = 'none';
@@ -2165,6 +2306,8 @@ async function init(){
   document.getElementById('copyClaudeBtn').onclick = copyForClaude;
   document.getElementById('backupBtn').onclick = ()=>{
     showTextFallback('Backup - keep this safe', buildClaudePayload(), 'tracker-backup.json');
+    try{ window.localStorage.setItem('paintracker_lastBackupDate', new Date().toISOString()); }catch(e){}
+    renderHealthCheck();
   };
   document.getElementById('importBtn').onclick = async ()=>{
     const out = document.getElementById('importResult');

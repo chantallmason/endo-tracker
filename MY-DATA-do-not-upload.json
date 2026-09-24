@@ -1,0 +1,40 @@
+{
+  "coilFitted": "2026-03-30",
+  "background": "Stage 3 endometriosis confirmed by laparoscopy, August 2021 (MRI flagged a shadow in the uterus, July 2021). Sites at diagnosis: cervical, both ovaries, bladder and urinary tract. All disease was excised at that surgery except scar tissue adhering the right ovary to the uterus, which could not be removed. That adhesion remains the only known active site and is the only endometriosis currently visible on imaging. The surgery gave approximately three symptom-controlled years. First Mirena coil expired after three years; replacement was delayed by about a year. New coil fitted 30 March 2026. Attended gynaecology triage roughly two weeks later, where an endometriosis flare was confirmed. Symptoms worsened again from around mid-July 2026. Two subsequent hospital contacts declined further investigation on the grounds of insufficient evidence (clear bloods, no fever, normal blood pressure), despite two ultrasounds since March showing ovarian cysts. Pain is aggravated by bowel movements when the area is already flared. No current bladder-specific symptoms, consistent with the excised urinary tract site remaining clear.",
+  "entries": [
+    {
+      "id": "1790166254626",
+      "datetime": "2026-09-23T13:24",
+      "pain": 7,
+      "tags": ["Pain", "Low energy", "Sharp / catching", "Deep / internal"],
+      "zones": ["cervical", "suprapubic"],
+      "activities": ["Desk / office day", "Slept well", "Period-like cramping"],
+      "duration": "minutes",
+      "onset": ["Lifting something", "Twisting / turning"],
+      "notes": ""
+    },
+    {
+      "id": "1788778947279",
+      "datetime": "2026-09-07T12:02",
+      "pain": 4,
+      "tags": ["Pain", "Twinge"],
+      "zones": ["pelvic_r", "cervical", "suprapubic", "lowback_r"],
+      "activities": ["Desk / office day", "Poor sleep", "Period-like cramping"],
+      "duration": "seconds",
+      "onset": ["Sitting"],
+      "notes": "Stressed, anxiety, heart palpitations"
+    },
+    {
+      "id": "1788640256160",
+      "datetime": "2026-09-05T21:29",
+      "pain": 5,
+      "tags": ["Pain", "Sharp / catching", "Pulling / tugging", "Deep / internal"],
+      "zones": ["suprapubic", "cervical"],
+      "activities": ["Mostly rested", "Long time sitting"],
+      "duration": null,
+      "onset": [],
+      "notes": ""
+    }
+  ],
+  "clinicalEvents": []
+}
