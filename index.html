@@ -1,0 +1,2289 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+<meta charset="UTF-8">
+<meta name="viewport" content="width=device-width, initial-scale=1.0">
+<title>Pain &amp; Cycle Tracker</title>
+<link rel="manifest" href="manifest.json">
+<meta name="theme-color" content="#7A2E3D">
+<link rel="apple-touch-icon" href="apple-touch-icon.png">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="default">
+<meta name="apple-mobile-web-app-title" content="Pain Tracker">
+<meta name="mobile-web-app-capable" content="yes">
+<style>
+  :root{
+    --bg:#F7F3EE;
+    --card:#FFFFFF;
+    --ink:#2B2420;
+    --muted:#8A7F72;
+    --line:#E3DAC9;
+    --sage:#7C9070;
+    --clay-light:#D9A26C;
+    --clay:#C17A5A;
+    --burgundy:#7A2E3D;
+    --gold:#B8944F;
+    --font-display: 'Iowan Old Style','Palatino Linotype', Georgia, serif;
+    --font-body: -apple-system, BlinkMacSystemFont, 'Segoe UI', Roboto, sans-serif;
+    --font-mono: ui-monospace, 'SF Mono', Consolas, monospace;
+  }
+  *{box-sizing:border-box;}
+  body{
+    margin:0; background:var(--bg); color:var(--ink);
+    font-family:var(--font-body); line-height:1.4;
+    padding-bottom:60px;
+  }
+  .wrap{max-width:640px; margin:0 auto; padding:20px 16px 40px;}
+  header{padding:8px 0 20px; border-bottom:1px solid var(--line); margin-bottom:20px;}
+  header h1{font-family:var(--font-display); font-size:1.6rem; margin:0 0 4px; letter-spacing:0.2px;}
+  header p{margin:0; color:var(--muted); font-size:0.92rem;}
+  .day-counter{font-family:var(--font-mono); font-size:0.85rem; color:var(--gold); margin-top:6px;}
+
+  .card{
+    background:var(--card); border:1px solid var(--line); border-radius:10px;
+    padding:18px; margin-bottom:20px;
+  }
+  .card h2{font-family:var(--font-display); font-size:1.15rem; margin:0 0 14px; font-weight:600;}
+  .card h3{font-size:0.85rem; text-transform:uppercase; letter-spacing:0.06em; color:var(--muted); margin:16px 0 8px; font-weight:600;}
+
+  label.field-label{display:block; font-size:0.82rem; color:var(--muted); margin-bottom:6px; font-weight:600;}
+  input[type=date], input[type=time]{
+    font-family:var(--font-body); font-size:0.95rem; padding:8px 10px;
+    border:1px solid var(--line); border-radius:6px; background:#FBF8F3; color:var(--ink);
+  }
+  .datetime-row{display:flex; gap:10px; margin-bottom:16px;}
+  .datetime-row > div{flex:1;}
+  .datetime-row input{width:100%;}
+
+  .slider-row{margin-bottom:16px;}
+  .slider-row input[type=range]{width:100%; accent-color:var(--burgundy);}
+  .slider-value{display:flex; justify-content:space-between; align-items:baseline; margin-bottom:4px;}
+  .slider-value .num{font-family:var(--font-mono); font-size:1.4rem; font-weight:700;}
+  .slider-scale{display:flex; justify-content:space-between; font-size:0.72rem; color:var(--muted); margin-top:2px;}
+
+  .chips{display:flex; flex-wrap:wrap; gap:8px;}
+  .chip{
+    padding:7px 13px; border:1px solid var(--line); border-radius:999px;
+    background:#FBF8F3; font-size:0.85rem; cursor:pointer; user-select:none;
+    transition:background 0.15s, border-color 0.15s, color 0.15s;
+  }
+  .chip.selected{background:var(--ink); border-color:var(--ink); color:#fff;}
+  .chip.zone.selected{background:var(--burgundy); border-color:var(--burgundy);}
+  .chip.watch{border-color:var(--gold);}
+  .chip.activity.selected{background:var(--sage); border-color:var(--sage);}
+  .chip.duration.selected{background:var(--clay); border-color:var(--clay);}
+  .chip.onset.selected{background:var(--gold); border-color:var(--gold); color:#2B2420;}
+  .chip.watch.selected{background:var(--gold); border-color:var(--gold); color:#2B2420;}
+  .chip.mech{border-color:var(--sage);}
+  .chip.mech.selected{background:var(--sage); border-color:var(--sage); color:#fff;}
+
+  .body-toggle{display:flex; gap:0; margin-bottom:12px; width:fit-content; border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .body-toggle button{
+    border:none; background:#FBF8F3; padding:6px 16px; font-size:0.82rem; cursor:pointer; color:var(--muted);
+  }
+  .body-toggle button.active{background:var(--ink); color:#fff;}
+
+  .body-map-layout{display:flex; gap:16px; align-items:flex-start; flex-wrap:wrap;}
+  .body-svg-holder{flex:0 0 auto; width:150px;}
+  .body-svg-holder svg{width:100%; height:auto;}
+  .zone-dot{fill:#D9CFBC; stroke:var(--ink); stroke-width:1; cursor:pointer;}
+  .zone-dot.selected{fill:var(--burgundy);}
+  .zone-chips{flex:1; min-width:180px;}
+
+  textarea{
+    width:100%; font-family:var(--font-body); font-size:0.92rem; padding:10px;
+    border:1px solid var(--line); border-radius:6px; background:#FBF8F3; color:var(--ink);
+    resize:vertical; min-height:60px;
+  }
+
+  .save-btn{
+    width:100%; padding:13px; margin-top:16px; border:none; border-radius:8px;
+    background:var(--burgundy); color:#fff; font-size:1rem; font-weight:600; cursor:pointer;
+    font-family:var(--font-body);
+  }
+  .save-btn:active{opacity:0.85;}
+
+  .legend{display:flex; gap:14px; flex-wrap:wrap; font-size:0.78rem; color:var(--muted); margin-bottom:12px;}
+  .legend span{display:inline-flex; align-items:center; gap:5px;}
+  .swatch{width:11px; height:11px; border-radius:3px; display:inline-block;}
+
+  canvas{width:100%; height:180px; display:block;}
+
+  .cal-nav{display:flex; justify-content:space-between; align-items:center; margin-bottom:12px;}
+  .cal-nav button{background:none; border:1px solid var(--line); border-radius:6px; padding:5px 12px; cursor:pointer; font-size:0.9rem;}
+  .cal-nav .cal-title{font-family:var(--font-display); font-size:1rem; font-weight:600;}
+  .cal-grid{display:grid; grid-template-columns:repeat(7,1fr); gap:4px;}
+  .cal-dow{font-size:0.68rem; color:var(--muted); text-align:center; padding-bottom:4px;}
+  .cal-cell{
+    aspect-ratio:1; border-radius:5px; display:flex; align-items:center; justify-content:center;
+    font-size:0.72rem; font-family:var(--font-mono); position:relative; color:var(--ink);
+    background:#EFE8DC; border:1px solid transparent;
+  }
+  .cal-cell.empty{background:transparent;}
+  .cal-cell.has-bleed::after{
+    content:''; position:absolute; bottom:2px; right:2px; width:5px; height:5px; border-radius:50%;
+    background:var(--gold);
+  }
+
+  .history-entry{border-bottom:1px solid var(--line); padding:12px 0;}
+  .history-entry:last-child{border-bottom:none;}
+  .hist-top{display:flex; justify-content:space-between; align-items:center; margin-bottom:5px;}
+  .hist-date{font-family:var(--font-mono); font-size:0.82rem; color:var(--muted);}
+  .pain-badge{
+    display:inline-flex; align-items:center; justify-content:center;
+    width:26px; height:26px; border-radius:50%; color:#fff; font-size:0.78rem; font-weight:700;
+    font-family:var(--font-mono);
+  }
+  .hist-tags{font-size:0.8rem; color:var(--ink); margin:3px 0;}
+  .hist-zones{font-size:0.78rem; color:var(--muted); margin:2px 0;}
+  .hist-notes{font-size:0.85rem; color:var(--ink); margin-top:4px; font-style:italic;}
+  .del-btn{background:none; border:none; color:var(--muted); font-size:0.78rem; cursor:pointer; padding:0; text-decoration:underline;}
+
+  .stats-grid{display:grid; grid-template-columns:1fr 1fr; gap:12px; margin-bottom:4px;}
+  .stat-box{background:#FBF8F3; border:1px solid var(--line); border-radius:8px; padding:10px 12px;}
+  .stat-box .label{font-size:0.72rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;}
+  .stat-box .value{font-family:var(--font-mono); font-size:1.3rem; font-weight:700; margin-top:2px;}
+
+  .export-row{display:flex; gap:10px; flex-wrap:wrap;}
+  .export-btn{
+    flex:1; min-width:140px; padding:11px; border:1px solid var(--ink); border-radius:8px;
+    background:none; color:var(--ink); font-size:0.9rem; cursor:pointer; font-family:var(--font-body);
+  }
+
+  .empty-note{color:var(--muted); font-size:0.88rem; font-style:italic;}
+
+  .today-head{display:flex; justify-content:space-between; align-items:flex-start; margin-bottom:12px;}
+  .today-sub{font-size:0.8rem; color:var(--muted); margin-top:3px;}
+  .today-worst{text-align:right; font-family:var(--font-mono);}
+  .today-worst .tw-num{display:block; font-size:1.7rem; font-weight:700; line-height:1;}
+  .today-worst .tw-lab{font-size:0.68rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;}
+  .today-entry{
+    display:flex; align-items:center; gap:10px; padding:10px 12px; margin-bottom:6px;
+    border:1px solid var(--line); border-radius:8px; background:#FBF8F3; cursor:pointer;
+  }
+  .today-entry:active{background:#F2ECE1;}
+  .te-badge{
+    flex:0 0 auto; width:34px; height:34px; border-radius:8px; display:flex;
+    align-items:center; justify-content:center; font-family:var(--font-mono);
+    font-weight:700; font-size:0.95rem;
+  }
+  .te-body{flex:1; min-width:0;}
+  .te-time{font-family:var(--font-mono); font-size:0.78rem; color:var(--muted);}
+  .te-tags{font-size:0.84rem; margin-top:2px;}
+  .te-meta{font-size:0.75rem; color:var(--muted); margin-top:2px;}
+  .te-edit{flex:0 0 auto; font-size:0.75rem; color:var(--muted); text-decoration:underline;}
+  .today-empty{
+    border:1px dashed var(--line); border-radius:8px; padding:16px; text-align:center;
+    color:var(--muted); font-size:0.88rem;
+  }
+  .editing-banner{
+    background:#F2E7D5; border:1px solid var(--gold); border-radius:8px;
+    padding:9px 12px; margin-bottom:14px; font-size:0.84rem;
+    display:flex; justify-content:space-between; align-items:center; gap:10px;
+  }
+  .editing-banner button{
+    background:none; border:1px solid var(--gold); border-radius:6px; padding:5px 12px;
+    font-size:0.8rem; cursor:pointer; color:var(--ink); font-family:var(--font-body);
+  }
+  .ongoing-flag{
+    display:inline-block; background:var(--clay); color:#fff; border-radius:4px;
+    padding:1px 6px; font-size:0.66rem; margin-left:6px; vertical-align:middle;
+  }
+  .storage-banner{
+    background:#7A2E3D; color:#fff; border-radius:10px; padding:14px 16px; margin-bottom:16px;
+  }
+  .band-tag{
+    display:inline-block; padding:2px 9px; border-radius:999px; font-size:0.72rem;
+    font-weight:600; margin-right:8px; vertical-align:middle;
+  }
+  .date-readback{font-size:0.72rem; color:var(--muted); margin-top:4px; font-family:var(--font-mono);}
+  .date-readback.not-today{color:var(--clay); font-weight:600;}
+  .storage-note{font-size:0.75rem; color:var(--muted); margin-top:4px; font-family:var(--font-mono);}
+  .storage-banner strong{display:block; font-size:1rem; margin-bottom:4px;}
+  .storage-banner .sb-detail{font-size:0.85rem; line-height:1.45; margin-bottom:10px;}
+  .storage-banner button{
+    width:100%; padding:11px; border:none; border-radius:8px; background:#fff; color:#7A2E3D;
+    font-weight:600; font-size:0.9rem; cursor:pointer; font-family:var(--font-body);
+  }
+  .insight-list{border:1px solid var(--line); border-radius:8px; overflow:hidden;}
+  .insight-row{padding:10px 12px; border-bottom:1px solid var(--line); background:#FBF8F3;}
+  .insight-row:last-child{border-bottom:none;}
+  .insight-head{display:flex; justify-content:space-between; align-items:baseline;}
+  .insight-name{font-size:0.9rem; font-weight:600;}
+  .insight-diff{font-family:var(--font-mono); font-size:1rem; font-weight:700;}
+  .insight-detail{font-size:0.76rem; color:var(--muted); margin-top:3px;}
+  .insight-flag{background:var(--ink); color:#fff; border-radius:4px; padding:1px 6px; font-size:0.68rem; margin-left:6px;}
+  .insight-caveat{font-size:0.78rem; color:var(--muted); margin-top:10px; line-height:1.45;}
+
+  .coil-facts{border:1px solid var(--line); border-radius:8px; overflow:hidden; background:#FBF8F3;}
+  .coil-row{display:flex; justify-content:space-between; align-items:baseline; padding:9px 12px; border-bottom:1px solid var(--line);}
+  .coil-row:last-child{border-bottom:none;}
+  .coil-label{font-size:0.78rem; color:var(--muted); text-transform:uppercase; letter-spacing:0.05em;}
+  .coil-val{font-family:var(--font-mono); font-size:0.92rem; font-weight:600;}
+  .link-btn{background:none; border:none; color:var(--muted); font-size:0.8rem; text-decoration:underline; cursor:pointer; padding:8px 0 0; font-family:var(--font-body);}
+
+  /* iPhone: prevent zoom-on-focus (iOS zooms any input under 16px) */
+  input[type=date], input[type=time], textarea, select{font-size:16px;}
+  /* iPhone: give tap targets room and kill the grey tap flash */
+  .chip, .export-btn, .save-btn, .cal-nav button, .body-toggle button, .del-btn{
+    -webkit-tap-highlight-color:transparent; touch-action:manipulation;
+  }
+  .chip{min-height:38px; display:inline-flex; align-items:center;}
+  .zone-dot{r:6;}
+  /* iPhone: keep content clear of the home indicator */
+  body{padding-bottom:calc(60px + env(safe-area-inset-bottom));}
+  .wrap{padding-left:max(16px, env(safe-area-inset-left)); padding-right:max(16px, env(safe-area-inset-right));}
+  input[type=range]{height:34px;}
+
+  /* export fallback sheet */
+  #fallbackPanel{position:fixed; inset:0; z-index:999;}
+  .fb-backdrop{position:absolute; inset:0; background:rgba(43,36,32,0.45);}
+  .fb-sheet{
+    position:absolute; left:0; right:0; bottom:0; background:var(--card);
+    border-radius:14px 14px 0 0; padding:16px 16px calc(16px + env(safe-area-inset-bottom));
+    max-height:82vh; overflow:auto; box-shadow:0 -4px 24px rgba(0,0,0,0.18);
+  }
+  .fb-head{display:flex; justify-content:space-between; align-items:center; margin-bottom:6px;}
+  .fb-head strong{font-family:var(--font-display); font-size:1.05rem;}
+  .fb-close{background:none; border:1px solid var(--line); border-radius:6px; padding:6px 12px; cursor:pointer; font-size:0.85rem;}
+  .fb-hint{font-size:0.8rem; color:var(--muted); margin:0 0 10px;}
+  .fb-text{
+    width:100%; min-height:200px; font-family:var(--font-mono); font-size:12px;
+    border:1px solid var(--line); border-radius:8px; padding:10px; background:#FBF8F3;
+    -webkit-user-select:text; user-select:text;
+  }
+  .fb-copy{
+    width:100%; margin-top:10px; padding:12px; border:none; border-radius:8px;
+    background:var(--burgundy); color:#fff; font-size:0.95rem; font-weight:600; cursor:pointer;
+  }
+  .fb-name{font-family:var(--font-mono); font-size:0.72rem; color:var(--muted); text-align:center; margin-top:8px;}
+
+  @media (prefers-reduced-motion: reduce){ *{transition:none !important; animation:none !important;} }
+  .meta-row{display:flex; gap:10px; align-items:center; flex-wrap:wrap;}
+  .meta-row input{flex:1; min-width:150px;}
+</style>
+</head>
+<body>
+<div class="wrap">
+
+  <div id="storageBanner" class="storage-banner" style="display:none;">
+    <strong>Not saved</strong>
+    <div class="sb-detail"></div>
+    <button type="button" id="rescueBtn">Copy my data out now</button>
+  </div>
+
+  <header>
+    <h1>Pain &amp; Cycle Tracker</h1>
+    <p>Logging pain, energy and bleeding to check whether symptoms follow a cycle since the Mirena.</p>
+    <div class="day-counter" id="dayCounter"></div>
+    <div class="storage-note" id="storageNote" style="display:none;"></div>
+  </header>
+
+  <div class="card" id="coilCard">
+    <h2>Mirena coil</h2>
+    <div class="coil-facts">
+      <div class="coil-row"><span class="coil-label">Fitted</span><span class="coil-val" id="coilFitted">30 March 2026</span></div>
+      <div class="coil-row"><span class="coil-label">Day</span><span class="coil-val" id="coilDay">—</span></div>
+      <div class="coil-row"><span class="coil-label">Due for removal</span><span class="coil-val" id="coilDue">30 March 2031</span></div>
+    </div>
+    <button type="button" class="link-btn" id="editCoilBtn">Change fitted date</button>
+    <div id="coilEdit" style="display:none;margin-top:10px;">
+      <div class="meta-row">
+        <input type="date" id="coilDate">
+        <button type="button" class="link-btn" id="cancelCoilBtn">Cancel</button>
+      </div>
+    </div>
+  </div>
+
+  <div class="card" id="todayCard">
+    <div class="today-head">
+      <div>
+        <h2 style="margin:0;" id="todayTitle">Today</h2>
+        <div class="today-sub" id="todaySub"></div>
+      </div>
+      <div class="today-worst" id="todayWorst"></div>
+    </div>
+    <div id="todayList"></div>
+    <button type="button" class="save-btn" id="newEntryBtn" style="margin-top:14px;">Log something new</button>
+  </div>
+
+  <div class="card" id="entryCard" style="display:none;">
+    <div style="display:flex;justify-content:space-between;align-items:center;margin-bottom:14px;">
+      <h2 id="entryCardTitle" style="margin:0;">Log an entry</h2>
+      <button type="button" class="link-btn" id="closeEntryBtn" style="padding:0;">Close</button>
+    </div>
+    <div id="editingBanner" class="editing-banner" style="display:none;">
+      <span id="editingLabel"></span>
+      <button type="button" id="cancelEditBtn">Cancel</button>
+    </div>
+
+    <div class="datetime-row">
+      <div>
+        <label class="field-label">Date</label>
+        <input type="date" id="entryDate">
+        <div class="date-readback" id="dateReadback"></div>
+      </div>
+      <div>
+        <label class="field-label">Time</label>
+        <input type="time" id="entryTime">
+      </div>
+    </div>
+
+    <div class="slider-row">
+      <div class="slider-value">
+        <label class="field-label" style="margin:0;">Pain level</label>
+        <span><span class="band-tag" id="painBandTag">No pain</span><span class="num" id="painNum">0</span></span>
+      </div>
+      <input type="range" min="0" max="10" value="0" id="painSlider">
+      <div class="slider-scale"><span>No pain</span><span>Worst pain</span></div>
+    </div>
+
+    <h3>What were you doing right then?</h3>
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 8px;">The moment the pain started, not the whole day.</p>
+    <div class="chips" id="onsetChips"></div>
+
+    <h3>How long has it lasted?</h3>
+    <div class="chips" id="durationChips"></div>
+
+    <h3>Symptoms</h3>
+    <div class="chips" id="tagChips"></div>
+
+    <h3>Where it hurts</h3>
+    <div class="body-toggle">
+      <button type="button" id="viewFrontBtn" class="active">Front</button>
+      <button type="button" id="viewBackBtn">Back</button>
+    </div>
+    <div class="body-map-layout">
+      <div class="body-svg-holder" id="svgHolder"></div>
+      <div class="zone-chips chips" id="zoneChips"></div>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-top:8px;"><strong>Right ovary</strong> is the known active site — scar tissue adhering it to the uterus, not removable at the 2021 laparoscopy. Everything else was excised, so pain marked at those sites is a possible recurrence and worth flagging separately.</p>
+
+    <h3>The day overall</h3>
+    <p style="font-size:0.78rem;color:var(--muted);margin:0 0 8px;">What the day involved as a whole. Log this even on good days, otherwise there's nothing to compare against.</p>
+    <div class="chips" id="activityChips"></div>
+
+    <h3>Notes</h3>
+    <textarea id="notesField" placeholder="Anything worth remembering — what helped, what made it worse, anything unusual"></textarea>
+
+    <button class="save-btn" id="saveBtn">Save entry</button>
+  </div>
+
+  <div class="card">
+    <h2>Timeline — last 90 days</h2>
+    <div class="legend">
+      <span><span class="swatch" style="background:#E8C55C;"></span>1–3 mild</span>
+      <span><span class="swatch" style="background:#E08A3C;"></span>4–6 moderate</span>
+      <span><span class="swatch" style="background:#C0392B;"></span>7–10 severe</span>
+      <span><span class="swatch" style="background:var(--gold);"></span>bleeding / spotting</span>
+      <span>&#9650; clinical event (colour = outcome)</span>
+    </div>
+    <canvas id="chartCanvas" width="600" height="180"></canvas>
+  </div>
+
+  <div class="card">
+    <h2>Calendar</h2>
+    <div class="cal-nav">
+      <button id="prevMonth">&larr;</button>
+      <span class="cal-title" id="calTitle"></span>
+      <button id="nextMonth">&rarr;</button>
+    </div>
+    <div class="cal-grid" id="calGrid"></div>
+    <div class="legend" style="margin-top:12px;">
+      <span><span class="swatch" style="background:#E8C55C;"></span>1–3 mild</span>
+      <span><span class="swatch" style="background:#E08A3C;"></span>4–6 moderate</span>
+      <span><span class="swatch" style="background:#C0392B;"></span>7–10 severe</span>
+      <span><span class="swatch" style="background:#C9C2B4;"></span>no pain</span>
+    </div>
+  </div>
+
+  <div class="card">
+    <h2>Clinical events</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">Log hospital, GP, A&amp;E and scan contacts here. This is what ties your symptom pattern to the clinical record.</p>
+    <div class="datetime-row">
+      <div>
+        <label class="field-label">Date</label>
+        <input type="date" id="eventDate">
+      </div>
+      <div>
+        <label class="field-label">Type</label>
+        <select id="eventType" style="width:100%;padding:8px 10px;border:1px solid var(--line);border-radius:6px;background:#FBF8F3;font-size:0.95rem;font-family:var(--font-body);color:var(--ink);">
+          <option>Blood test</option>
+          <option>Ultrasound</option>
+          <option>GP appointment</option>
+          <option>A&E / Triage</option>
+          <option>Gynaecology appointment</option>
+          <option>Surgery / procedure</option>
+          <option>Other</option>
+        </select>
+      </div>
+    </div>
+    <label class="field-label">Outcome</label>
+    <div class="chips" id="outcomeChips" style="margin-bottom:14px;"></div>
+    <label class="field-label">Notes</label>
+    <textarea id="eventNotes" placeholder="What they said, what was found, what happens next"></textarea>
+    <button class="save-btn" id="saveEventBtn" style="background:var(--gold); color:#2B2420;">Save event</button>
+    <h3>Event history</h3>
+    <div id="eventList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Activity patterns</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">Average pain on days with an activity against days without it. Positive means more pain.</p>
+    <div id="activityInsights"></div>
+  </div>
+
+  <div class="card">
+    <h2>Summary</h2>
+    <div class="stats-grid" id="statsGrid"></div>
+  </div>
+
+  <div class="card">
+    <h2>History</h2>
+    <div id="historyList"></div>
+  </div>
+
+  <div class="card">
+    <h2>Backup and restore</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">Storage is tied to this exact version of the tracker. If you open a newer version, it starts empty. Paste a previous backup here to bring your data across.</p>
+    <textarea id="importBox" placeholder="Paste your backup here, then press Restore" style="min-height:90px;font-family:var(--font-mono);font-size:12px;"></textarea>
+    <div class="export-row" style="margin-top:10px;">
+      <button class="export-btn" id="importBtn">Restore from backup</button>
+      <button class="export-btn" id="backupBtn" style="border-color:var(--gold);">Make a backup</button>
+    </div>
+    <div id="importResult" style="font-size:0.82rem;margin-top:10px;"></div>
+  </div>
+
+  <div class="card">
+    <h2>Export for appointments</h2>
+    <p style="font-size:0.85rem;color:var(--muted);margin-top:0;">Download before hospital or GP reviews. Keep dated copies as your evidence trail.</p>
+    <div class="export-row">
+      <button class="export-btn" id="exportCsvBtn">Download entries CSV</button>
+      <button class="export-btn" id="exportEventsCsvBtn">Download events CSV</button>
+      <button class="export-btn" id="exportSummaryBtn">Download summary</button>
+      <button class="export-btn" id="copyClaudeBtn" style="border-color:var(--gold);">Copy data for Claude</button>
+      <button class="export-btn" id="viewTextBtn">View summary as text</button>
+    </div>
+    <p style="font-size:0.78rem;color:var(--muted);margin-top:10px;margin-bottom:0;">On iPhone, downloads open the share sheet so you can save to Files or send straight to an email. If a download ever fails, "View summary as text" always works.</p>
+  </div>
+
+</div>
+
+<script>
+const TAG_GROUPS = {
+  'General': ['Pain','Fatigue','Low energy','High energy','No pain / good day','Bleeding','Spotting'],
+  'Pain quality': ['Twinge','Pulling / tugging','Sharp / catching','Dull ache','Deep / internal','Burning nerve pain'],
+  'Position & movement': ['Worse on movement','Worse standing / walking','Worse changing position','Worse stretching / reaching','Worse when sitting','Worse when lying still','Eased by lying still'],
+  'Bowel': ['Worse after bowel movement','Worse when bowel is full','Bowel pain, not linked to BM'],
+  'Bladder — watch for recurrence': ['Urgency','Frequency','Burning','Blood in urine']
+};
+const MECHANICAL_TAGS = ['Pulling / tugging','Sharp / catching','Worse on movement','Worse standing / walking','Worse changing position','Worse stretching / reaching','Worse when sitting','Worse after bowel movement','Worse when bowel is full'];
+// Pain that persists or worsens at complete rest points away from a purely mechanical cause
+const REST_PAIN_TAGS = ['Worse when lying still'];
+// Brief, low-intensity, self-resolving twinge. Tracked separately: frequency matters more than severity.
+const TWINGE_TAG = 'Twinge';
+
+// Ordered shortest to longest. 'hours' is a rough midpoint used for analysis only.
+const DURATIONS = [
+  {id:'seconds',   label:'Seconds',            hours:0.01},
+  {id:'minutes',   label:'A few minutes',      hours:0.1},
+  {id:'under1',    label:'Under an hour',      hours:0.5},
+  {id:'1to3',      label:'1 to 3 hours',       hours:2},
+  {id:'halfday',   label:'Most of the day',    hours:8},
+  {id:'allday',    label:'All day',            hours:16},
+  {id:'multiday',  label:'More than a day',    hours:36},
+  {id:'constant',  label:'Constant, ongoing',  hours:48}
+];
+// Anything at or above this is treated as sustained rather than episodic
+const SUSTAINED_HOURS = 8;
+
+// What she was doing at the MOMENT the pain hit. Distinct from day-level activities:
+// this is an immediate trigger, not a whole-day exposure, so it is never fed to the
+// day-level correlation engine.
+const ONSET_CONTEXTS = [
+  'Sitting','Standing up','Sitting down','Lying down','Getting out of bed',
+  'Walking','Bending / reaching','Lifting something','Twisting / turning',
+  'On the toilet','After eating','Coughing / sneezing','Exercising','Driving',
+  'Resting, doing nothing','Asleep / woke me up'
+];
+const RELIEVED_BY_REST_TAGS = ['Eased by lying still'];
+const ALL_TAGS = Object.values(TAG_GROUPS).flat();
+
+const ACTIVITY_GROUPS = {
+  'Movement': ['Walking / dog walk','Exercise / workout','Heavy lifting','Housework','Stairs a lot','Mostly rested'],
+  'Posture & travel': ['Long time sitting','Desk / office day','Driving','Standing a lot','Long journey'],
+  'Food & drink': ['Alcohol','Caffeine','Large meal','Trigger foods','Constipated','Poor appetite'],
+  'Sleep & stress': ['Poor sleep','Slept well','High stress day','Restful day'],
+  'Other': ['Period-like cramping','Cold / unwell','Travel day','Work deadline']
+};
+const ALL_ACTIVITIES = Object.values(ACTIVITY_GROUPS).flat();
+// Minimum days on each side before an activity comparison is reported at all
+const MIN_DAYS_EACH_SIDE = 4;
+const OUTCOMES = ['Normal / clear','Abnormal / findings','Referred on','Rejected — insufficient evidence','Other'];
+
+const ZONES = [
+  {id:'upper_abdo', label:'Upper abdomen', view:'front', cx:75, cy:78},
+  {id:'flank_l', label:'Left flank', view:'front', cx:52, cy:105},
+  {id:'flank_r', label:'Right flank', view:'front', cx:98, cy:105},
+  {id:'bladder', label:'Bladder (excised 2021 — watch)', view:'front', cx:75, cy:128},
+  {id:'pelvic_l', label:'Left ovary (excised 2021 — watch)', view:'front', cx:56, cy:145},
+  {id:'pelvic_r', label:'Right ovary — adhesion (known active site)', view:'front', cx:94, cy:145},
+  {id:'cervical', label:'Cervical (excised 2021 — watch)', view:'front', cx:75, cy:155},
+  {id:'suprapubic', label:'Central pelvic', view:'front', cx:75, cy:167},
+  {id:'leg_l', label:'Left leg / hip referral', view:'front', cx:60, cy:210},
+  {id:'leg_r', label:'Right leg / hip referral', view:'front', cx:90, cy:210},
+
+  {id:'kidney_l', label:'Left kidney area', view:'back', cx:58, cy:100},
+  {id:'kidney_r', label:'Right kidney area', view:'back', cx:92, cy:100},
+  {id:'lowback_l', label:'Left lower back', view:'back', cx:58, cy:140},
+  {id:'lowback_r', label:'Right lower back', view:'back', cx:92, cy:140},
+  {id:'sacrum', label:'Central lower back / sacrum', view:'back', cx:75, cy:155},
+  {id:'rectal', label:'Rectal / perineal', view:'back', cx:75, cy:180},
+];
+
+let entries = [];
+let clinicalEvents = [];
+// ---------------------------------------------------------------------------
+// SEED DATA - carried forward when this tracker is rebuilt.
+// Populated from the user's backup before any new version is issued, so a new
+// build never opens empty. Merged on first run only; never overwrites newer data.
+const SEED_DATA = {"coilFitted": "2026-03-30", "entries": [{"id": "1790166254626", "datetime": "2026-09-23T13:24", "pain": 7, "tags": ["Pain", "Low energy", "Sharp / catching", "Deep / internal"], "zones": ["cervical", "suprapubic"], "activities": ["Desk / office day", "Slept well", "Period-like cramping"], "duration": "minutes", "onset": ["Lifting something", "Twisting / turning"], "notes": ""}, {"id": "1788778947279", "datetime": "2026-09-07T12:02", "pain": 4, "tags": ["Pain", "Twinge"], "zones": ["pelvic_r", "cervical", "suprapubic", "lowback_r"], "activities": ["Desk / office day", "Poor sleep", "Period-like cramping"], "duration": "seconds", "onset": ["Sitting"], "notes": "Stressed, anxiety, heart palpitations"}, {"id": "1788640256160", "datetime": "2026-09-05T21:29", "pain": 5, "tags": ["Pain", "Sharp / catching", "Pulling / tugging", "Deep / internal"], "zones": ["suprapubic", "cervical"], "activities": ["Mostly rested", "Long time sitting"], "duration": null, "onset": [], "notes": ""}], "clinicalEvents": []};
+// ---------------------------------------------------------------------------
+
+const COIL_FITTED_DEFAULT = '2026-03-30';   // fitted 30 March 2026
+const COIL_LIFESPAN_YEARS = 5;              // NHS: Mirena stays in 5 years
+let meta = {coilDate: COIL_FITTED_DEFAULT};
+let selectedTags = new Set();
+let selectedZones = new Set();
+let selectedActivities = new Set();
+let selectedDuration = '';
+let selectedOnset = new Set();
+let selectedOutcome = '';
+let currentView = 'front';
+let calMonth = new Date(); calMonth.setDate(1);
+
+// ---------- storage ----------
+// Merge entries found in ANY store, de-duplicated. Nothing written by an earlier
+// version is discarded just because a different store answered first.
+async function loadEntries(){
+  try{
+    const found = await recallAll('ep_entries');
+    const seen = new Set();
+    const merged = [];
+    found.forEach(f=>{
+      let arr = [];
+      try{ arr = JSON.parse(f.value) || []; }catch(e){ return; }
+      arr.forEach(e=>{
+        if(!e || !e.datetime) return;
+        const sig = [e.datetime, e.pain, (e.tags||[]).slice().sort().join('|'), e.notes||''].join('~');
+        if(seen.has(sig)) return;
+        seen.add(sig);
+        merged.push(e);
+      });
+    });
+    return merged;
+  }catch(e){ return []; }
+}
+// ---------- resilient storage ----------
+// The host's window.storage bridge can reject writes outright ("Invalid response
+// format"). Losing symptom data is not acceptable, so writes go through a chain of
+// backends: whichever works first wins, and every write is verified by reading back.
+let storageHealthy = true;
+let activeBackend = null;      // name of the backend currently working
+const backendLog = [];         // what was tried and what happened, for diagnostics
+
+function sleep(ms){ return new Promise(r=>setTimeout(r, ms)); }
+
+// --- Backend A: the host bridge, single blob
+const hostBackend = {
+  name: 'app storage',
+  async set(key, payload){
+    let lastErr = null;
+    for(const args of [[key, payload, false], [key, payload]]){
+      try{ await window.storage.set.apply(window.storage, args); return; }
+      catch(e){ lastErr = e; }
+    }
+    throw lastErr || new Error('set failed');
+  },
+  async get(key){
+    for(const args of [[key, false], [key]]){
+      try{
+        const r = await window.storage.get.apply(window.storage, args);
+        if(r && typeof r.value === 'string') return r.value;
+      }catch(e){ /* try next signature */ }
+    }
+    return null;
+  }
+};
+
+// --- Backend B: the host bridge, split into chunks
+// If the bridge chokes on payload size, smaller pieces may succeed.
+const CHUNK_SIZE = 2000;
+const chunkedBackend = {
+  name: 'app storage (chunked)',
+  async set(key, payload){
+    const parts = [];
+    for(let i=0; i<payload.length; i+=CHUNK_SIZE) parts.push(payload.slice(i, i+CHUNK_SIZE));
+    await hostBackend.set(key + ':n', String(parts.length));
+    for(let i=0; i<parts.length; i++) await hostBackend.set(key + ':' + i, parts[i]);
+  },
+  async get(key){
+    const n = await hostBackend.get(key + ':n');
+    if(!n) return null;
+    let out = '';
+    for(let i=0; i<parseInt(n,10); i++){
+      const part = await hostBackend.get(key + ':' + i);
+      if(part === null) return null;
+      out += part;
+    }
+    return out;
+  }
+};
+
+// --- Backend C: browser storage
+function makeWebBackend(store, label){
+  return {
+    name: label,
+    async set(key, payload){ store.setItem('paintracker_' + key, payload); },
+    async get(key){ return store.getItem('paintracker_' + key); }
+  };
+}
+
+// Browser storage comes FIRST. It belongs to the browser, so it survives a new
+// version of this tracker. The host bridge is scoped to a single build, which is
+// what stranded a month of entries, so it is now a secondary copy only.
+function availableBackends(){
+  const list = [];
+  try{ if(window.localStorage){ window.localStorage.setItem('__t','1'); window.localStorage.removeItem('__t');
+    list.push(makeWebBackend(window.localStorage, 'browser storage')); } }catch(e){}
+  list.push(hostBackend, chunkedBackend);
+  try{ if(window.sessionStorage){ window.sessionStorage.setItem('__t','1'); window.sessionStorage.removeItem('__t');
+    list.push(makeWebBackend(window.sessionStorage, 'session storage (this tab only)')); } }catch(e){}
+  return list;
+}
+
+async function tryBackend(be, key, payload){
+  await be.set(key, payload);
+  const back = await be.get(key);          // a write only counts if it reads back
+  return back === payload;
+}
+
+const deadBackends = new Set();   // don't keep retrying what has already failed this session
+let allBackends = [];             // every store currently holding a copy
+
+async function persist(key, value){
+  const payload = JSON.stringify(value);
+  const backends = availableBackends().filter(b=> !deadBackends.has(b.name));
+
+  // Stay on a backend that already worked
+  const ordered = activeBackend
+    ? backends.slice().sort((a,b)=> (a.name===activeBackend?-1:0) - (b.name===activeBackend?-1:0))
+    : backends;
+
+  // Write to every backend that works, not just the first. Redundancy is the point:
+  // if one store is wiped or scoped away, the others still hold the data.
+  const succeeded = [];
+  for(const be of ordered){
+    let ok = false;
+    for(let attempt=1; attempt<=2 && !ok; attempt++){
+      try{
+        ok = await tryBackend(be, key, payload);
+        if(!ok) backendLog.push(be.name + ': write did not read back');
+      }catch(e){
+        backendLog.push(be.name + ': ' + (e && e.message ? e.message : 'failed'));
+      }
+      if(!ok && attempt < 2) await sleep(150);
+    }
+    if(ok){ succeeded.push(be.name); }
+    else { deadBackends.add(be.name); }
+  }
+
+  if(succeeded.length){
+    activeBackend = succeeded[0];
+    allBackends = succeeded;
+    setStorageHealth(true);
+    return true;
+  }
+  console.error('all storage backends failed for', key, backendLog);
+  setStorageHealth(false, key);
+  return false;
+}
+
+// Read from every backend and keep the richest copy. If an older build wrote to
+// one store and a newer one to another, this recovers both rather than picking one.
+async function recallAll(key){
+  const found = [];
+  for(const be of availableBackends()){
+    try{
+      const v = await be.get(key);
+      if(v){ found.push({name:be.name, value:v}); }
+    }catch(e){ /* next */ }
+  }
+  return found;
+}
+
+async function recall(key){
+  const found = await recallAll(key);
+  if(!found.length) return null;
+  activeBackend = activeBackend || found[0].name;
+  // Prefer the copy with the most records
+  let best = found[0], bestLen = -1;
+  found.forEach(f=>{
+    let len = 0;
+    try{ const p = JSON.parse(f.value); len = Array.isArray(p) ? p.length : 1; }catch(e){}
+    if(len > bestLen){ bestLen = len; best = f; }
+  });
+  return best.value;
+}
+
+function entriesCountLabel(){
+  const n = (typeof entries !== 'undefined' && entries) ? entries.length : 0;
+  return n + (n === 1 ? ' entry saved' : ' entries saved');
+}
+
+function setStorageHealth(ok, key){
+  storageHealthy = ok;
+  const banner = document.getElementById('storageBanner');
+  if(banner){
+    if(ok){ banner.style.display = 'none'; }
+    else {
+      banner.style.display = '';
+      banner.querySelector('.sb-detail').textContent =
+        'Nothing could be written to this device. Your entry is still on screen but will be lost if you close this page. Copy it out now.';
+    }
+  }
+  const note = document.getElementById('storageNote');
+  if(note){
+    if(ok && activeBackend){
+      const copies = allBackends.length > 1 ? ' (+' + (allBackends.length-1) + ' backup ' + (allBackends.length-1===1?'copy':'copies') + ')' : '';
+      note.textContent = entriesCountLabel() + ' · saving to ' + activeBackend + copies;
+      note.style.display = '';
+    } else if(!ok){
+      note.textContent = 'Not saving. Export your data after each session.';
+      note.style.display = '';
+    }
+  }
+}
+
+async function saveEntriesToStorage(){
+  return persist('ep_entries', entries);
+}
+async function loadMeta(){
+  try{
+    const v = await recall('ep_meta');
+    const m = v ? JSON.parse(v) : {};
+    if(!m.coilDate) m.coilDate = COIL_FITTED_DEFAULT;
+    return m;
+  }
+  catch(e){ return {coilDate: COIL_FITTED_DEFAULT}; }
+}
+async function saveMetaToStorage(){
+  return persist('ep_meta', meta);
+}
+async function loadEvents(){
+  try{
+    const found = await recallAll('ep_events');
+    const seen = new Set();
+    const merged = [];
+    found.forEach(f=>{
+      let arr = [];
+      try{ arr = JSON.parse(f.value) || []; }catch(e){ return; }
+      arr.forEach(ev=>{
+        if(!ev || !ev.date) return;
+        const sig = [ev.date, ev.type, ev.outcome||'', ev.notes||''].join('~');
+        if(seen.has(sig)) return;
+        seen.add(sig);
+        merged.push(ev);
+      });
+    });
+    return merged;
+  }catch(e){ return []; }
+}
+async function saveEventsToStorage(){
+  return persist('ep_events', clinicalEvents);
+}
+
+// ---------- helpers ----------
+function pad(n){ return n.toString().padStart(2,'0'); }
+
+// Track what we last auto-filled, so a manual edit is never overwritten.
+let lastAutoDate = '', lastAutoTime = '';
+
+function stampNow(force){
+  const dEl = document.getElementById('entryDate');
+  const tEl = document.getElementById('entryTime');
+  if(!dEl || !tEl) return;
+  const untouched = (dEl.value === lastAutoDate || dEl.value === '') &&
+                    (tEl.value === lastAutoTime || tEl.value === '');
+  if(force || untouched){
+    lastAutoDate = todayStr();
+    lastAutoTime = nowTimeStr();
+    dEl.value = lastAutoDate;
+    tEl.value = lastAutoTime;
+  }
+  renderDateReadback();
+}
+
+function renderDateReadback(){
+  const el = document.getElementById('dateReadback');
+  const dEl = document.getElementById('entryDate');
+  if(!el || !dEl || !dEl.value) return;
+  const d = new Date(dEl.value + 'T12:00');
+  const label = d.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+  const isToday = dEl.value === todayStr();
+  el.textContent = isToday ? label : label + ' (not today)';
+  el.className = 'date-readback' + (isToday ? '' : ' not-today');
+}
+
+// The page is often backgrounded rather than closed, so the prefilled date can go
+// stale. Re-stamp whenever it comes back into view, and roll the calendar and day
+// count over with it.
+function refreshForNow(){
+  stampNow(false);
+  renderToday();
+  renderDayCounter();
+  renderChart();
+  const now = new Date();
+  if(calMonth.getMonth() !== now.getMonth() || calMonth.getFullYear() !== now.getFullYear()){
+    // only jump the calendar if it was showing the month that has just ended
+    calMonth = new Date(now.getFullYear(), now.getMonth(), 1);
+  }
+  renderCalendar();
+}
+function todayStr(){ const d = new Date(); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+function nowTimeStr(){ const d = new Date(); return `${pad(d.getHours())}:${pad(d.getMinutes())}`; }
+// Severity bands. 7 sits in red: it is the threshold used for "severe" everywhere
+// else in this tracker and in standard pain scoring.
+const PAIN_BANDS = [
+  {max:0,  colour:'#C9C2B4', ink:'#2B2420', label:'No pain',  range:'0'},
+  {max:3,  colour:'#E8C55C', ink:'#2B2420', label:'Mild',     range:'1-3'},
+  {max:6,  colour:'#E08A3C', ink:'#2B2420', label:'Moderate', range:'4-6'},
+  {max:10, colour:'#C0392B', ink:'#FFFFFF', label:'Severe',   range:'7-10'}
+];
+function painBand(level){
+  const n = Number(level) || 0;
+  return PAIN_BANDS.find(b => n <= b.max) || PAIN_BANDS[PAIN_BANDS.length-1];
+}
+function painColor(level){ return painBand(level).colour; }
+function painInk(level){ return painBand(level).ink; }
+function painLabel(level){ return painBand(level).label; }
+function dayKey(dt){ const d = new Date(dt); return `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`; }
+
+// ---------- form: tags ----------
+function renderTagChips(){
+  const holder = document.getElementById('tagChips');
+  holder.innerHTML = '';
+  Object.entries(TAG_GROUPS).forEach(([group, tags])=>{
+    const heading = document.createElement('div');
+    heading.style.cssText = 'width:100%;font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px;';
+    heading.textContent = group;
+    holder.appendChild(heading);
+    const row = document.createElement('div');
+    row.className = 'chips';
+    row.style.marginBottom = '4px';
+    tags.forEach(tag=>{
+      const chip = document.createElement('div');
+      const isWatch = group.indexOf('Bladder') === 0;
+      const isMech = group.indexOf('Mechanical') === 0;
+      chip.className = 'chip' + (selectedTags.has(tag) ? ' selected' : '') + (isWatch ? ' watch' : '') + (isMech ? ' mech' : '');
+      chip.textContent = tag;
+      if(tag === TWINGE_TAG) chip.title = 'Brief, sharp ping. Painful but mild, and over quickly.';
+      chip.onclick = ()=>{
+        if(tag === 'No pain / good day'){
+          selectedTags.clear();
+          selectedTags.add(tag);
+          document.getElementById('painSlider').value = 0;
+          document.getElementById('painNum').textContent = '0';
+        } else {
+          selectedTags.delete('No pain / good day');
+          if(selectedTags.has(tag)) selectedTags.delete(tag); else selectedTags.add(tag);
+        }
+        renderTagChips();
+      };
+      row.appendChild(chip);
+    });
+    holder.appendChild(row);
+  });
+}
+
+function renderOnsetChips(){
+  const holder = document.getElementById('onsetChips');
+  holder.innerHTML = '';
+  ONSET_CONTEXTS.forEach(c=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip onset' + (selectedOnset.has(c) ? ' selected' : '');
+    chip.textContent = c;
+    chip.onclick = ()=>{
+      if(selectedOnset.has(c)) selectedOnset.delete(c); else selectedOnset.add(c);
+      renderOnsetChips();
+    };
+    holder.appendChild(chip);
+  });
+}
+
+function renderDurationChips(){
+  const holder = document.getElementById('durationChips');
+  holder.innerHTML = '';
+  DURATIONS.forEach(d=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip duration' + (selectedDuration === d.id ? ' selected' : '');
+    chip.textContent = d.label;
+    chip.onclick = ()=>{
+      selectedDuration = (selectedDuration === d.id) ? '' : d.id;   // tap again to clear
+      renderDurationChips();
+    };
+    holder.appendChild(chip);
+  });
+}
+
+function durationLabel(id){
+  const d = DURATIONS.find(x=>x.id===id);
+  return d ? d.label : '';
+}
+function durationHours(id){
+  const d = DURATIONS.find(x=>x.id===id);
+  return d ? d.hours : null;
+}
+
+function renderActivityChips(){
+  const holder = document.getElementById('activityChips');
+  holder.innerHTML = '';
+  Object.entries(ACTIVITY_GROUPS).forEach(([group, acts])=>{
+    const heading = document.createElement('div');
+    heading.style.cssText = 'width:100%;font-size:0.75rem;color:var(--muted);text-transform:uppercase;letter-spacing:0.05em;margin:8px 0 4px;';
+    heading.textContent = group;
+    holder.appendChild(heading);
+    const row = document.createElement('div');
+    row.className = 'chips';
+    row.style.marginBottom = '4px';
+    acts.forEach(act=>{
+      const chip = document.createElement('div');
+      chip.className = 'chip activity' + (selectedActivities.has(act) ? ' selected' : '');
+      chip.textContent = act;
+      chip.onclick = ()=>{
+        if(selectedActivities.has(act)) selectedActivities.delete(act); else selectedActivities.add(act);
+        renderActivityChips();
+      };
+      row.appendChild(chip);
+    });
+    holder.appendChild(row);
+  });
+}
+
+// ---------- form: body map ----------
+function buildSvg(view){
+  const zonesForView = ZONES.filter(z=>z.view===view);
+  const dots = zonesForView.map(z=>
+    `<circle class="zone-dot${selectedZones.has(z.id)?' selected':''}" data-id="${z.id}" cx="${z.cx}" cy="${z.cy}" r="6"></circle>`
+  ).join('');
+  return `<svg viewBox="0 0 150 260" xmlns="http://www.w3.org/2000/svg">
+    <ellipse cx="75" cy="22" rx="16" ry="18" fill="#E9E1D2" stroke="#2B2420" stroke-width="1"/>
+    <rect x="55" y="42" width="40" height="18" rx="8" fill="#E9E1D2" stroke="#2B2420" stroke-width="1"/>
+    <rect x="40" y="55" width="70" height="95" rx="18" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    <rect x="35" y="145" width="80" height="35" rx="14" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    <rect x="18" y="58" width="16" height="90" rx="8" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    <rect x="116" y="58" width="16" height="90" rx="8" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    <rect x="48" y="178" width="20" height="80" rx="9" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    <rect x="82" y="178" width="20" height="80" rx="9" fill="#EFE8DC" stroke="#2B2420" stroke-width="1"/>
+    ${dots}
+  </svg>`;
+}
+function renderBodyMap(){
+  document.getElementById('svgHolder').innerHTML = buildSvg(currentView);
+  document.querySelectorAll('.zone-dot').forEach(dot=>{
+    dot.onclick = ()=>{
+      const id = dot.dataset.id;
+      if(selectedZones.has(id)) selectedZones.delete(id); else selectedZones.add(id);
+      renderBodyMap();
+      renderZoneChips();
+    };
+  });
+  document.getElementById('viewFrontBtn').classList.toggle('active', currentView==='front');
+  document.getElementById('viewBackBtn').classList.toggle('active', currentView==='back');
+}
+function renderZoneChips(){
+  const holder = document.getElementById('zoneChips');
+  holder.innerHTML = '';
+  ZONES.filter(z=>z.view===currentView).forEach(z=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip zone' + (selectedZones.has(z.id) ? ' selected' : '');
+    chip.textContent = z.label;
+    chip.onclick = ()=>{
+      if(selectedZones.has(z.id)) selectedZones.delete(z.id); else selectedZones.add(z.id);
+      renderBodyMap();
+      renderZoneChips();
+    };
+    holder.appendChild(chip);
+  });
+}
+
+// ---------- clinical events ----------
+function renderOutcomeChips(){
+  const holder = document.getElementById('outcomeChips');
+  holder.innerHTML = '';
+  OUTCOMES.forEach(o=>{
+    const chip = document.createElement('div');
+    chip.className = 'chip' + (selectedOutcome === o ? ' selected' : '');
+    chip.textContent = o;
+    chip.onclick = ()=>{
+      selectedOutcome = (selectedOutcome === o) ? '' : o;
+      renderOutcomeChips();
+    };
+    holder.appendChild(chip);
+  });
+}
+
+function outcomeColor(outcome){
+  if(outcome === 'Rejected — insufficient evidence') return '#7A2E3D';
+  if(outcome === 'Abnormal / findings' || outcome === 'Referred on') return '#B8944F';
+  if(outcome === 'Normal / clear') return '#7C9070';
+  return '#8A7F72';
+}
+
+async function handleSaveEvent(){
+  const date = document.getElementById('eventDate').value;
+  if(!date){ alert('Add a date for this event.'); return; }
+  const type = document.getElementById('eventType').value;
+  const notes = document.getElementById('eventNotes').value.trim();
+  clinicalEvents.push({
+    id: Date.now().toString(),
+    date, type,
+    outcome: selectedOutcome,
+    notes
+  });
+  clinicalEvents.sort((a,b)=> new Date(b.date) - new Date(a.date));
+  const okEv = await saveEventsToStorage();
+  if(!okEv){
+    renderEventList();
+    window.scrollTo({top:0, behavior:'smooth'});
+    return;   // keep the form filled so nothing is lost
+  }
+
+  document.getElementById('eventDate').value = '';
+  document.getElementById('eventNotes').value = '';
+  selectedOutcome = '';
+  renderOutcomeChips();
+  renderEventList();
+  renderChart();
+  renderCalendar();
+}
+
+function renderEventList(){
+  const holder = document.getElementById('eventList');
+  if(clinicalEvents.length === 0){
+    holder.innerHTML = '<p class="empty-note">No clinical events logged yet.</p>';
+    return;
+  }
+  holder.innerHTML = '';
+  clinicalEvents.forEach(ev=>{
+    const div = document.createElement('div');
+    div.className = 'history-entry';
+    div.innerHTML = `
+      <div class="hist-top">
+        <span class="hist-date">${new Date(ev.date).toLocaleDateString('en-GB',{weekday:'short', day:'numeric', month:'short', year:'numeric'})}</span>
+        <span class="pain-badge" style="background:${outcomeColor(ev.outcome)};font-size:0.6rem;width:auto;padding:0 8px;border-radius:12px;">${ev.type}</span>
+      </div>
+      ${ev.outcome ? `<div class="hist-tags">${ev.outcome}</div>` : ''}
+      ${ev.notes ? `<div class="hist-notes">${ev.notes.replace(/</g,'&lt;')}</div>` : ''}
+      <button class="del-btn" data-id="${ev.id}">Delete</button>
+    `;
+    holder.appendChild(div);
+  });
+  holder.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('Delete this event?')) return;
+      clinicalEvents = clinicalEvents.filter(ev=>ev.id !== btn.dataset.id);
+      await saveEventsToStorage();
+      renderEventList();
+      renderChart();
+      renderCalendar();
+    };
+  });
+}
+
+// ---------- save entry ----------
+// ---------- editing an existing entry ----------
+let editingId = null;   // when set, saving updates this entry instead of creating one
+
+function clearForm(){
+  selectedTags.clear();
+  selectedZones.clear();
+  selectedActivities.clear();
+  selectedOnset.clear();
+  selectedDuration = '';
+  document.getElementById('painSlider').value = 0;
+  document.getElementById('notesField').value = '';
+  const num = document.getElementById('painNum');
+  num.textContent = '0'; num.style.color = 'var(--ink)';
+  const bandTag = document.getElementById('painBandTag');
+  if(bandTag){ bandTag.textContent = painLabel(0); bandTag.style.background = painColor(0); bandTag.style.color = painInk(0); }
+  renderTagChips(); renderBodyMap(); renderZoneChips();
+  renderActivityChips(); renderDurationChips(); renderOnsetChips();
+}
+
+function setEditMode(entry){
+  editingId = entry ? entry.id : null;
+  const title = document.getElementById('entryCardTitle');
+  const banner = document.getElementById('editingBanner');
+  const label = document.getElementById('editingLabel');
+  const btn = document.getElementById('saveBtn');
+
+  if(entry){
+    const d = new Date(entry.datetime);
+    title.textContent = 'Update this episode';
+    label.textContent = 'Editing the episode logged at ' + pad(d.getHours()) + ':' + pad(d.getMinutes()) +
+      '. Change the pain score or how long it has lasted, then save.';
+    banner.style.display = '';
+    btn.textContent = 'Update entry';
+  } else {
+    title.textContent = 'Log an entry';
+    banner.style.display = 'none';
+    btn.textContent = 'Save entry';
+  }
+}
+
+function loadEntryIntoForm(id){
+  const entry = entries.find(e=>e.id === id);
+  if(!entry) return;
+  selectedTags = new Set(entry.tags || []);
+  selectedZones = new Set(entry.zones || []);
+  selectedActivities = new Set(entry.activities || []);
+  selectedOnset = new Set(entry.onset || []);
+  selectedDuration = entry.duration || '';
+  document.getElementById('painSlider').value = entry.pain;
+  document.getElementById('notesField').value = entry.notes || '';
+  const [datePart, timePart] = entry.datetime.split('T');
+  document.getElementById('entryDate').value = datePart;
+  document.getElementById('entryTime').value = timePart;
+  lastAutoDate = datePart; lastAutoTime = timePart;   // don't re-stamp over a loaded entry
+
+  const num = document.getElementById('painNum');
+  num.textContent = entry.pain;
+  num.style.color = painColor(entry.pain) === '#C9C2B4' ? 'var(--ink)' : painColor(entry.pain);
+  const bandTag = document.getElementById('painBandTag');
+  if(bandTag){ bandTag.textContent = painLabel(entry.pain); bandTag.style.background = painColor(entry.pain); bandTag.style.color = painInk(entry.pain); }
+
+  renderTagChips(); renderBodyMap(); renderZoneChips();
+  renderActivityChips(); renderDurationChips(); renderOnsetChips();
+  renderDateReadback();
+  setEditMode(entry);
+  showEntryCard(true);
+  document.getElementById('entryCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+function showEntryCard(show){
+  document.getElementById('entryCard').style.display = show ? '' : 'none';
+  document.getElementById('newEntryBtn').style.display = show ? 'none' : '';
+}
+
+function startNewEntry(){
+  clearForm();
+  stampNow(true);
+  setEditMode(null);
+  showEntryCard(true);
+  document.getElementById('entryCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+async function handleSave(){
+  const date = document.getElementById('entryDate').value || todayStr();
+  const time = document.getElementById('entryTime').value || nowTimeStr();
+  const pain = parseInt(document.getElementById('painSlider').value, 10);
+  const notes = document.getElementById('notesField').value.trim();
+
+  if(selectedTags.size === 0 && pain === 0){
+    selectedTags.add('No pain / good day');
+  }
+
+  const payload = {
+    datetime: `${date}T${time}`,
+    pain: pain,
+    tags: Array.from(selectedTags),
+    zones: Array.from(selectedZones),
+    activities: Array.from(selectedActivities),
+    duration: selectedDuration || null,
+    onset: Array.from(selectedOnset),
+    notes: notes
+  };
+
+  const wasEditing = !!editingId;
+  if(wasEditing){
+    const idx = entries.findIndex(e=>e.id === editingId);
+    if(idx !== -1){
+      entries[idx] = Object.assign({}, entries[idx], payload, {updated: new Date().toISOString()});
+    } else {
+      entries.push(Object.assign({id: Date.now().toString()}, payload));
+    }
+  } else {
+    entries.push(Object.assign({id: Date.now().toString()}, payload));
+  }
+  entries.sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
+
+  const btn = document.getElementById('saveBtn');
+  const original = btn.textContent;
+  btn.disabled = true; btn.textContent = 'Saving...';
+  const ok = await saveEntriesToStorage();
+  btn.disabled = false;
+
+  if(!ok){
+    // Keep everything on screen. Clearing the form here would destroy the entry.
+    btn.textContent = 'Not saved - see warning above';
+    renderAll();
+    window.scrollTo({top:0, behavior:'smooth'});
+    setTimeout(()=>{ btn.textContent = original; }, 4000);
+    return;
+  }
+  btn.textContent = wasEditing ? 'Updated' : 'Saved (' + entries.length + ' entries stored)';
+  setTimeout(()=>{ btn.textContent = editingId ? 'Update entry' : 'Save entry'; }, 2500);
+
+  editingId = null;
+  clearForm();
+  stampNow(true);
+  setEditMode(null);
+  showEntryCard(false);
+  renderAll();
+  document.getElementById('todayCard').scrollIntoView({behavior:'smooth', block:'start'});
+}
+
+// ---------- day counter ----------
+function coilDayCount(when){
+  if(!meta.coilDate) return null;
+  const coil = new Date(meta.coilDate); coil.setHours(0,0,0,0);
+  const d = new Date(when); d.setHours(0,0,0,0);
+  return Math.floor((d - coil) / 86400000);
+}
+
+function renderDayCounter(){
+  const el = document.getElementById('dayCounter');
+  const days = coilDayCount(new Date());
+  if(days === null){ el.textContent = ''; return; }
+  el.textContent = `Day ${days} since the coil was fitted`;
+
+  const fitted = new Date(meta.coilDate);
+  const due = new Date(meta.coilDate);
+  due.setFullYear(due.getFullYear() + COIL_LIFESPAN_YEARS);
+  const fmt = (d)=> d.toLocaleDateString('en-GB',{day:'numeric', month:'long', year:'numeric'});
+  document.getElementById('coilFitted').textContent = fmt(fitted);
+  document.getElementById('coilDue').textContent = fmt(due);
+
+  const yrs = Math.floor(days/365), rem = days % 365, mths = Math.floor(rem/30);
+  let elapsed = `${days}`;
+  if(yrs > 0) elapsed += `  (${yrs}y ${mths}m)`;
+  else if(mths > 0) elapsed += `  (${mths} months)`;
+  document.getElementById('coilDay').textContent = elapsed;
+}
+
+// ---------- history ----------
+function renderHistory(){
+  const holder = document.getElementById('historyList');
+  if(entries.length === 0){
+    holder.innerHTML = '<p class="empty-note">No entries yet. Log your first one above.</p>';
+    return;
+  }
+  holder.innerHTML = '';
+  entries.forEach(e=>{
+    const d = new Date(e.datetime);
+    const dateStr = `${d.toLocaleDateString('en-GB',{weekday:'short', day:'numeric', month:'short'})}, ${pad(d.getHours())}:${pad(d.getMinutes())}`;
+    let daysSince = '';
+    if(meta.coilDate){
+      const coil = new Date(meta.coilDate);
+      daysSince = ` · day ${Math.floor((d - coil)/86400000)}`;
+    }
+    const zoneLabels = e.zones.map(id => (ZONES.find(z=>z.id===id)||{}).label).filter(Boolean).join(', ');
+    const div = document.createElement('div');
+    div.className = 'history-entry';
+    div.style.borderLeft = '4px solid ' + painColor(e.pain);
+    div.style.paddingLeft = '10px';
+    div.innerHTML = `
+      <div class="hist-top">
+        <span class="hist-date">${dateStr}${daysSince}</span>
+        <span class="pain-badge" style="background:${painColor(e.pain)};color:${painInk(e.pain)};">${e.pain}</span>
+      </div>
+      ${e.tags.length ? `<div class="hist-tags">${e.tags.join(' · ')}</div>` : ''}
+      ${e.duration ? `<div class="hist-zones">Lasted: ${durationLabel(e.duration)}</div>` : ''}
+      ${(e.onset||[]).length ? `<div class="hist-zones">At onset: ${e.onset.join(', ')}</div>` : ''}
+      ${zoneLabels ? `<div class="hist-zones">Location: ${zoneLabels}</div>` : ''}
+      ${e.notes ? `<div class="hist-notes">${e.notes.replace(/</g,'&lt;')}</div>` : ''}
+      <button class="del-btn" data-id="${e.id}">Delete</button>
+    `;
+    holder.appendChild(div);
+  });
+  holder.querySelectorAll('.del-btn').forEach(btn=>{
+    btn.onclick = async ()=>{
+      if(!confirm('Delete this entry?')) return;
+      entries = entries.filter(en=>en.id !== btn.dataset.id);
+      await saveEntriesToStorage();
+      renderAll();
+    };
+  });
+}
+
+// ---------- chart ----------
+function renderChart(){
+  const canvas = document.getElementById('chartCanvas');
+  const ctx = canvas.getContext('2d');
+  // Match the backing store to the physical pixels so it isn't blurry on retina screens
+  const dpr = window.devicePixelRatio || 1;
+  const rect = canvas.getBoundingClientRect();
+  const w = Math.round(rect.width) || 600;
+  const h = 180;
+  if(canvas.width !== Math.round(w*dpr) || canvas.height !== Math.round(h*dpr)){
+    canvas.width = Math.round(w*dpr);
+    canvas.height = Math.round(h*dpr);
+  }
+  ctx.setTransform(dpr,0,0,dpr,0,0);
+  ctx.clearRect(0,0,w,h);
+
+  const days = 90;
+  const today = new Date(); today.setHours(0,0,0,0);
+  const dayList = [];
+  for(let i=days-1;i>=0;i--){
+    const d = new Date(today); d.setDate(d.getDate()-i);
+    dayList.push(d);
+  }
+  const byDay = {};
+  entries.forEach(e=>{
+    const k = dayKey(e.datetime);
+    if(!byDay[k]) byDay[k] = {maxPain:0, bleed:false};
+    byDay[k].maxPain = Math.max(byDay[k].maxPain, e.pain);
+    if(e.tags.includes('Bleeding') || e.tags.includes('Spotting')) byDay[k].bleed = true;
+  });
+
+  const padL = 28, padB = 18, padT = 10, padR = 8;
+  const plotW = w - padL - padR, plotH = h - padT - padB;
+
+  // gridlines
+  ctx.strokeStyle = '#E3DAC9';
+  ctx.fillStyle = '#8A7F72';
+  ctx.font = '9px sans-serif';
+  ctx.lineWidth = 1;
+  [0,5,10].forEach(v=>{
+    const y = padT + plotH - (v/10)*plotH;
+    ctx.beginPath(); ctx.moveTo(padL,y); ctx.lineTo(w-padR,y); ctx.stroke();
+    ctx.fillText(v, 4, y+3);
+  });
+
+  const stepX = plotW / (days-1);
+
+  // bleed markers
+  dayList.forEach((d,i)=>{
+    const k = dayKey(d);
+    if(byDay[k] && byDay[k].bleed){
+      const x = padL + i*stepX;
+      ctx.fillStyle = '#B8944F';
+      ctx.fillRect(x-1, padT+plotH+2, 2, 5);
+    }
+  });
+
+  // clinical event markers (triangles above the plot)
+  const eventsByDay = {};
+  clinicalEvents.forEach(ev=>{
+    const k = dayKey(ev.date);
+    eventsByDay[k] = ev;
+  });
+  dayList.forEach((d,i)=>{
+    const k = dayKey(d);
+    if(eventsByDay[k]){
+      const x = padL + i*stepX;
+      ctx.fillStyle = outcomeColor(eventsByDay[k].outcome);
+      ctx.beginPath();
+      ctx.moveTo(x, padT-6);
+      ctx.lineTo(x-4, padT-1);
+      ctx.lineTo(x+4, padT-1);
+      ctx.closePath();
+      ctx.fill();
+    }
+  });
+
+  // line + points
+  ctx.beginPath();
+  ctx.strokeStyle = '#2B2420';
+  ctx.lineWidth = 1.2;
+  let started = false;
+  dayList.forEach((d,i)=>{
+    const k = dayKey(d);
+    if(!byDay[k]) return;
+    const x = padL + i*stepX;
+    const y = padT + plotH - (byDay[k].maxPain/10)*plotH;
+    if(!started){ ctx.moveTo(x,y); started = true; } else { ctx.lineTo(x,y); }
+  });
+  ctx.stroke();
+
+  dayList.forEach((d,i)=>{
+    const k = dayKey(d);
+    if(!byDay[k]) return;
+    const x = padL + i*stepX;
+    const y = padT + plotH - (byDay[k].maxPain/10)*plotH;
+    ctx.beginPath();
+    ctx.arc(x,y,3,0,Math.PI*2);
+    ctx.fillStyle = painColor(byDay[k].maxPain);
+    ctx.fill();
+  });
+
+  // x-axis month labels every ~15 days
+  ctx.fillStyle = '#8A7F72';
+  for(let i=0;i<days;i+=15){
+    const d = dayList[i];
+    const x = padL + i*stepX;
+    ctx.fillText(`${d.getDate()}/${d.getMonth()+1}`, x-8, h-4);
+  }
+
+  if(entries.length === 0){
+    ctx.fillStyle = '#8A7F72';
+    ctx.font = '12px sans-serif';
+    ctx.fillText('No data yet — log entries to build the picture', 40, h/2);
+  }
+}
+
+// ---------- calendar ----------
+function renderCalendar(){
+  const title = document.getElementById('calTitle');
+  title.textContent = calMonth.toLocaleDateString('en-GB',{month:'long', year:'numeric'});
+
+  const byDay = {};
+  entries.forEach(e=>{
+    const k = dayKey(e.datetime);
+    if(!byDay[k]) byDay[k] = {maxPain:0, bleed:false, count:0};
+    byDay[k].maxPain = Math.max(byDay[k].maxPain, e.pain);
+    byDay[k].count++;
+    if(e.tags.includes('Bleeding') || e.tags.includes('Spotting')) byDay[k].bleed = true;
+  });
+
+  const grid = document.getElementById('calGrid');
+  grid.innerHTML = '';
+  ['Mon','Tue','Wed','Thu','Fri','Sat','Sun'].forEach(d=>{
+    const el = document.createElement('div');
+    el.className = 'cal-dow'; el.textContent = d;
+    grid.appendChild(el);
+  });
+
+  const year = calMonth.getFullYear(), month = calMonth.getMonth();
+  const firstDay = new Date(year, month, 1);
+  let startOffset = firstDay.getDay() - 1; if(startOffset < 0) startOffset = 6;
+  const daysInMonth = new Date(year, month+1, 0).getDate();
+
+  for(let i=0;i<startOffset;i++){
+    const el = document.createElement('div');
+    el.className = 'cal-cell empty';
+    grid.appendChild(el);
+  }
+  const eventDays = {};
+  clinicalEvents.forEach(ev=>{ eventDays[dayKey(ev.date)] = ev; });
+
+  for(let day=1; day<=daysInMonth; day++){
+    const k = `${year}-${pad(month+1)}-${pad(day)}`;
+    const data = byDay[k];
+    const ev = eventDays[k];
+    const el = document.createElement('div');
+    el.className = 'cal-cell' + (data && data.bleed ? ' has-bleed' : '');
+    el.textContent = day;
+    if(data){
+      el.style.background = painColor(data.maxPain);
+      el.style.color = painInk(data.maxPain);
+      el.title = `${painLabel(data.maxPain)} - worst pain ${data.maxPain}/10`;
+    }
+    if(ev){
+      el.style.border = '2px solid ' + outcomeColor(ev.outcome);
+      el.title = `${ev.type}: ${ev.outcome||''}`;
+    }
+    grid.appendChild(el);
+  }
+}
+
+// ---------- stats ----------
+function renderStats(){
+  const grid = document.getElementById('statsGrid');
+  if(entries.length === 0){
+    grid.innerHTML = '<p class="empty-note">Stats will appear once you have logged entries.</p>';
+    return;
+  }
+  const total = entries.length;
+  const avgPain = (entries.reduce((s,e)=>s+e.pain,0)/total).toFixed(1);
+  const bleedDays = new Set(entries.filter(e=>e.tags.includes('Bleeding')||e.tags.includes('Spotting')).map(e=>dayKey(e.datetime))).size;
+  const severeDays = new Set(entries.filter(e=>e.pain>=7).map(e=>dayKey(e.datetime))).size;
+  const dates = entries.map(e=>new Date(e.datetime));
+  const earliest = new Date(Math.min(...dates));
+  const spanDays = Math.max(1, Math.floor((new Date() - earliest)/86400000));
+
+  const rejections = clinicalEvents.filter(e=>e.outcome === 'Rejected — insufficient evidence').length;
+  const rightCount = entries.filter(e=>e.zones.some(z=>z.endsWith('_r'))).length;
+  const leftCount = entries.filter(e=>e.zones.some(z=>z.endsWith('_l'))).length;
+  const mechCount = entries.filter(e=>e.tags.some(t=>MECHANICAL_TAGS.includes(t))).length;
+  const painEntries = entries.filter(e=>e.pain>0).length;
+  const mechPct = painEntries ? Math.round((mechCount/painEntries)*100) : 0;
+
+  grid.innerHTML = `
+    <div class="stat-box"><div class="label">Total entries</div><div class="value">${total}</div></div>
+    <div class="stat-box"><div class="label">Average pain</div><div class="value">${avgPain}</div></div>
+    <div class="stat-box"><div class="label">Right-side entries</div><div class="value">${rightCount}</div></div>
+    <div class="stat-box"><div class="label">Left-side entries</div><div class="value">${leftCount}</div></div>
+    <div class="stat-box" style="grid-column:1/3;"><div class="label">Pain with a mechanical trigger</div><div class="value">${mechCount} of ${painEntries} (${mechPct}%)</div></div>
+    <div class="stat-box"><div class="label">Bleeding/spotting days</div><div class="value">${bleedDays}</div></div>
+    <div class="stat-box"><div class="label">Severe pain days (7+)</div><div class="value">${severeDays}</div></div>
+    <div class="stat-box"><div class="label">Clinical events logged</div><div class="value">${clinicalEvents.length}</div></div>
+    <div class="stat-box"><div class="label">Rejections logged</div><div class="value">${rejections}</div></div>
+    <div class="stat-box" style="grid-column:1/3;"><div class="label">Tracking span</div><div class="value">${spanDays} days (since ${earliest.toLocaleDateString('en-GB')})</div></div>
+  `;
+}
+
+
+// ---------- activity correlation ----------
+// Compares max daily pain on days WITH an activity against days WITHOUT it.
+// Day-level, not entry-level, so a day logged five times doesn't outweigh a day logged once.
+function buildDailyIndex(){
+  const byDay = {};
+  entries.forEach(e=>{
+    const k = dayKey(e.datetime);
+    if(!byDay[k]) byDay[k] = {maxPain:0, activities:new Set(), logged:true};
+    byDay[k].maxPain = Math.max(byDay[k].maxPain, e.pain);
+    (e.activities||[]).forEach(a=> byDay[k].activities.add(a));
+  });
+  return byDay;
+}
+
+function mean(arr){ return arr.length ? arr.reduce((s,v)=>s+v,0)/arr.length : null; }
+
+// Welch's t-test approximation -> rough significance flag.
+// Small samples, self-reported data: this is a screening signal, not proof.
+function meanDiffStrength(a, b){
+  if(a.length < 2 || b.length < 2) return null;
+  const ma = mean(a), mb = mean(b);
+  const va = a.reduce((s,v)=>s+(v-ma)**2,0)/(a.length-1);
+  const vb = b.reduce((s,v)=>s+(v-mb)**2,0)/(b.length-1);
+  const se = Math.sqrt(va/a.length + vb/b.length);
+  if(se === 0){
+    // No variance either side: either identical (no signal) or perfectly separated (maximal signal)
+    return ma === mb ? null : Infinity;
+  }
+  return Math.abs(ma - mb) / se;   // t statistic
+}
+
+function analyseActivities(){
+  const byDay = buildDailyIndex();
+  const days = Object.keys(byDay).sort();
+  const results = [];
+
+  ALL_ACTIVITIES.forEach(act=>{
+    const withPain = [], withoutPain = [], nextDayWith = [], nextDayWithout = [];
+    days.forEach(k=>{
+      const d = byDay[k];
+      const next = new Date(k); next.setDate(next.getDate()+1);
+      const nk = dayKey(next);
+      const nextVal = byDay[nk] ? byDay[nk].maxPain : null;
+      if(d.activities.has(act)){
+        withPain.push(d.maxPain);
+        if(nextVal !== null) nextDayWith.push(nextVal);
+      } else {
+        withoutPain.push(d.maxPain);
+        if(nextVal !== null) nextDayWithout.push(nextVal);
+      }
+    });
+    if(withPain.length < MIN_DAYS_EACH_SIDE || withoutPain.length < MIN_DAYS_EACH_SIDE) return;
+    const mw = mean(withPain), mo = mean(withoutPain);
+    const t = meanDiffStrength(withPain, withoutPain);
+    const nextDiff = (nextDayWith.length >= MIN_DAYS_EACH_SIDE && nextDayWithout.length >= MIN_DAYS_EACH_SIDE)
+      ? mean(nextDayWith) - mean(nextDayWithout) : null;
+    results.push({
+      activity: act,
+      daysWith: withPain.length,
+      daysWithout: withoutPain.length,
+      avgWith: mw,
+      avgWithout: mo,
+      diff: mw - mo,
+      nextDayDiff: nextDiff,
+      t: t,
+      strong: t !== null && t >= 2 && Math.abs(mw - mo) >= 1
+    });
+  });
+  results.sort((a,b)=> Math.abs(b.diff) - Math.abs(a.diff));
+  return results;
+}
+
+function renderActivityInsights(){
+  const holder = document.getElementById('activityInsights');
+  if(!holder) return;
+  const byDay = buildDailyIndex();
+  const daysLogged = Object.keys(byDay).length;
+  const daysWithActivity = Object.values(byDay).filter(d=>d.activities.size>0).length;
+  const results = analyseActivities();
+
+  if(daysWithActivity < MIN_DAYS_EACH_SIDE * 2){
+    holder.innerHTML = `<p class="empty-note">Not enough yet. You have ${daysWithActivity} day${daysWithActivity===1?'':'s'} with activities logged. Comparisons start once there are at least ${MIN_DAYS_EACH_SIDE} days on each side, so roughly ${MIN_DAYS_EACH_SIDE*2} days of logging.</p>`;
+    return;
+  }
+  if(results.length === 0){
+    holder.innerHTML = `<p class="empty-note">${daysLogged} days logged, but no activity yet has ${MIN_DAYS_EACH_SIDE} days both with and without it. Keep logging.</p>`;
+    return;
+  }
+
+  let html = '<div class="insight-list">';
+  results.slice(0,8).forEach(r=>{
+    const up = r.diff > 0;
+    const colour = up ? 'var(--burgundy)' : 'var(--sage)';
+    const sign = up ? '+' : '';
+    html += `
+      <div class="insight-row">
+        <div class="insight-head">
+          <span class="insight-name">${r.activity}</span>
+          <span class="insight-diff" style="color:${colour};">${sign}${r.diff.toFixed(1)}</span>
+        </div>
+        <div class="insight-detail">
+          ${r.avgWith.toFixed(1)} with vs ${r.avgWithout.toFixed(1)} without &middot; ${r.daysWith}/${r.daysWithout} days
+          ${r.strong ? '<span class="insight-flag">consistent</span>' : ''}
+        </div>
+        ${r.nextDayDiff !== null && Math.abs(r.nextDayDiff) >= 1
+          ? `<div class="insight-detail">Next day: ${r.nextDayDiff > 0 ? '+' : ''}${r.nextDayDiff.toFixed(1)}</div>` : ''}
+      </div>`;
+  });
+  html += '</div>';
+  html += `<p class="insight-caveat">These are averages, not causes. Pain also stops you doing things, so a low-pain link can mean the activity helped or simply that you felt well enough to do it. "Consistent" marks a gap large enough and steady enough to be worth mentioning to a clinician, not proof.</p>`;
+  holder.innerHTML = html;
+}
+
+// ---------- import / restore ----------
+// Merges rather than overwrites, so restoring an old backup can never wipe newer entries.
+function entrySignature(e){
+  return [e.datetime, e.pain, (e.tags||[]).slice().sort().join('|'), (e.notes||'')].join('~');
+}
+function eventSignature(ev){
+  return [ev.date, ev.type, ev.outcome||'', ev.notes||''].join('~');
+}
+
+function parseBackup(text){
+  const trimmed = (text||'').trim();
+  if(!trimmed) throw new Error('Nothing pasted.');
+  // Tolerate the "Here's my pain tracker data" preamble from the copy button
+  const start = trimmed.indexOf('{');
+  if(start === -1) throw new Error("That doesn't look like a backup.");
+  let parsed;
+  try{ parsed = JSON.parse(trimmed.slice(start)); }
+  catch(e){ throw new Error('Could not read that backup. Paste the whole thing, including the braces.'); }
+  if(!parsed || (!Array.isArray(parsed.entries) && !Array.isArray(parsed.clinicalEvents))){
+    throw new Error('No entries found in that backup.');
+  }
+  return parsed;
+}
+
+async function importBackup(text){
+  const parsed = parseBackup(text);
+  const existingEntries = new Set(entries.map(entrySignature));
+  const existingEvents = new Set(clinicalEvents.map(eventSignature));
+
+  let addedEntries = 0, addedEvents = 0, skipped = 0;
+  (parsed.entries || []).forEach(e=>{
+    if(!e || !e.datetime) return;
+    const norm = {
+      id: e.id || (Date.now() + Math.random()).toString(),
+      datetime: e.datetime,
+      pain: typeof e.pain === 'number' ? e.pain : 0,
+      tags: Array.isArray(e.tags) ? e.tags : [],
+      zones: Array.isArray(e.zones) ? e.zones : [],
+      activities: Array.isArray(e.activities) ? e.activities : [],
+      onset: Array.isArray(e.onset) ? e.onset : [],
+      duration: e.duration || null,
+      notes: e.notes || ''
+    };
+    if(existingEntries.has(entrySignature(norm))){ skipped++; return; }
+    existingEntries.add(entrySignature(norm));
+    entries.push(norm);
+    addedEntries++;
+  });
+
+  (parsed.clinicalEvents || []).forEach(ev=>{
+    if(!ev || !ev.date) return;
+    const norm = {
+      id: ev.id || (Date.now() + Math.random()).toString(),
+      date: ev.date,
+      type: ev.type || 'Other',
+      outcome: ev.outcome || '',
+      notes: ev.notes || ''
+    };
+    if(existingEvents.has(eventSignature(norm))){ skipped++; return; }
+    existingEvents.add(eventSignature(norm));
+    clinicalEvents.push(norm);
+    addedEvents++;
+  });
+
+  if(parsed.coilFitted) meta.coilDate = parsed.coilFitted;
+
+  entries.sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
+  clinicalEvents.sort((a,b)=> new Date(b.date) - new Date(a.date));
+
+  const savedE = await saveEntriesToStorage();
+  const savedV = await saveEventsToStorage();
+  await saveMetaToStorage();
+
+  return {addedEntries, addedEvents, skipped, saved: savedE && savedV};
+}
+
+// ---------- today view ----------
+function renderToday(){
+  const list = document.getElementById('todayList');
+  const sub = document.getElementById('todaySub');
+  const worst = document.getElementById('todayWorst');
+  const title = document.getElementById('todayTitle');
+  if(!list) return;
+
+  const now = new Date();
+  title.textContent = now.toLocaleDateString('en-GB', {weekday:'long', day:'numeric', month:'long'});
+
+  const key = todayStr();
+  const todays = entries.filter(e=> dayKey(e.datetime) === key)
+                        .sort((a,b)=> new Date(a.datetime) - new Date(b.datetime));
+
+  const days = coilDayCount(now);
+  sub.textContent = (days !== null ? 'Day ' + days + ' since the coil' : '') +
+                    (todays.length ? ' · ' + todays.length + (todays.length===1?' episode logged':' episodes logged') : '');
+
+  if(todays.length){
+    const maxPain = Math.max(...todays.map(e=>e.pain));
+    worst.innerHTML = `<span class="tw-num" style="color:${painColor(maxPain)};">${maxPain}</span><span class="tw-lab">worst today</span>`;
+  } else {
+    worst.innerHTML = '';
+  }
+
+  if(!todays.length){
+    list.innerHTML = '<div class="today-empty">Nothing logged yet today. If you are in pain now, log it and update the same entry as it develops.</div>';
+    return;
+  }
+
+  list.innerHTML = '';
+  todays.forEach(e=>{
+    const d = new Date(e.datetime);
+    const zoneLabels = (e.zones||[]).map(id => (ZONES.find(z=>z.id===id)||{}).label).filter(Boolean);
+    const bits = [];
+    if(e.duration) bits.push('lasted ' + durationLabel(e.duration));
+    if((e.onset||[]).length) bits.push('started while ' + e.onset.join(', ').toLowerCase());
+    if(zoneLabels.length) bits.push(zoneLabels.length + (zoneLabels.length===1?' site':' sites'));
+    const row = document.createElement('div');
+    row.className = 'today-entry';
+    row.innerHTML = `
+      <span class="te-badge" style="background:${painColor(e.pain)};color:${painInk(e.pain)};">${e.pain}</span>
+      <span class="te-body">
+        <span class="te-time">${pad(d.getHours())}:${pad(d.getMinutes())}${e.updated ? ' · updated' : ''}</span>
+        <div class="te-tags">${(e.tags||[]).join(' · ') || 'No symptoms tagged'}</div>
+        ${bits.length ? `<div class="te-meta">${bits.join(' · ')}</div>` : '<div class="te-meta">tap to add how long it lasted</div>'}
+      </span>
+      <span class="te-edit">Update</span>`;
+    row.onclick = ()=> loadEntryIntoForm(e.id);
+    list.appendChild(row);
+  });
+}
+
+// ---------- render all ----------
+function renderAll(){
+  setStorageHealth(storageHealthy);
+  renderToday();
+  renderDayCounter();
+  renderActivityInsights();
+  renderHistory();
+  renderChart();
+  renderCalendar();
+  renderStats();
+}
+
+// ---------- export ----------
+const IS_IOS = /iPad|iPhone|iPod/.test(navigator.userAgent) ||
+               (navigator.platform === 'MacIntel' && navigator.maxTouchPoints > 1);
+
+function showTextFallback(title, content, filename){
+  const existing = document.getElementById('fallbackPanel');
+  if(existing) existing.remove();
+  const panel = document.createElement('div');
+  panel.id = 'fallbackPanel';
+  panel.innerHTML = `
+    <div class="fb-backdrop"></div>
+    <div class="fb-sheet">
+      <div class="fb-head">
+        <strong>${title}</strong>
+        <button class="fb-close" type="button">Close</button>
+      </div>
+      <p class="fb-hint">Tap the box to select everything, then copy. Paste into Notes, Mail, or a message to save it.</p>
+      <textarea class="fb-text" readonly>${content.replace(/</g,'&lt;')}</textarea>
+      <button class="fb-copy" type="button">Copy all</button>
+      <div class="fb-name">${filename}</div>
+    </div>`;
+  document.body.appendChild(panel);
+  const ta = panel.querySelector('.fb-text');
+  ta.onclick = ()=>{ ta.focus(); ta.setSelectionRange(0, ta.value.length); };
+  panel.querySelector('.fb-close').onclick = ()=> panel.remove();
+  panel.querySelector('.fb-backdrop').onclick = ()=> panel.remove();
+  panel.querySelector('.fb-copy').onclick = async (ev)=>{
+    const btn = ev.currentTarget;
+    try{
+      await navigator.clipboard.writeText(content);
+      btn.textContent = 'Copied ✓';
+    }catch(e){
+      ta.focus(); ta.setSelectionRange(0, ta.value.length);
+      btn.textContent = 'Select and copy manually';
+    }
+    setTimeout(()=>{ btn.textContent = 'Copy all'; }, 2500);
+  };
+}
+
+async function deliverFile(content, filename, type, title){
+  // 1. iOS share sheet — lets it go straight to Files, Mail, Notes or WhatsApp
+  try{
+    const file = new File([content], filename, {type});
+    if(navigator.canShare && navigator.canShare({files:[file]})){
+      await navigator.share({files:[file], title: title || filename});
+      return 'shared';
+    }
+  }catch(e){
+    if(e && e.name === 'AbortError') return 'cancelled'; // user dismissed the sheet
+  }
+
+  // 2. Standard download (desktop, Android)
+  if(!IS_IOS){
+    try{
+      const blob = new Blob([content], {type});
+      const url = URL.createObjectURL(blob);
+      const a = document.createElement('a');
+      a.href = url; a.download = filename;
+      document.body.appendChild(a); a.click(); document.body.removeChild(a);
+      setTimeout(()=> URL.revokeObjectURL(url), 5000);
+      return 'downloaded';
+    }catch(e){ /* fall through */ }
+  }
+
+  // 3. Always-works fallback: show it, let her copy it
+  showTextFallback(title || 'Export', content, filename);
+  return 'fallback';
+}
+
+// kept for compatibility with existing callers
+function downloadBlob(content, filename, type){
+  return deliverFile(content, filename, type, filename);
+}
+
+function exportCsv(){
+  const rows = [['Date','Time','Pain (0-10)','Days since coil','Duration','At onset','Symptoms','Locations','Day context','Notes']];
+  entries.slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime)).forEach(e=>{
+    const d = new Date(e.datetime);
+    let daysSince = '';
+    if(meta.coilDate){ daysSince = Math.floor((d - new Date(meta.coilDate))/86400000); }
+    const zoneLabels = e.zones.map(id => (ZONES.find(z=>z.id===id)||{}).label).filter(Boolean).join('; ');
+    rows.push([
+      `${d.getFullYear()}-${pad(d.getMonth()+1)}-${pad(d.getDate())}`,
+      `${pad(d.getHours())}:${pad(d.getMinutes())}`,
+      e.pain,
+      daysSince,
+      durationLabel(e.duration),
+      (e.onset||[]).join('; '),
+      e.tags.join('; '),
+      zoneLabels,
+      (e.activities||[]).join('; '),
+      (e.notes||'').replace(/"/g,'""')
+    ]);
+  });
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  deliverFile(csv, `pain-tracker-export-${todayStr()}.csv`, 'text/csv', 'Symptom entries');
+}
+
+function exportEventsCsv(){
+  const rows = [['Date','Type','Outcome','Notes']];
+  clinicalEvents.slice().sort((a,b)=> new Date(a.date)-new Date(b.date)).forEach(ev=>{
+    rows.push([ev.date, ev.type, ev.outcome||'', (ev.notes||'').replace(/"/g,'""')]);
+  });
+  const csv = rows.map(r=>r.map(c=>`"${c}"`).join(',')).join('\n');
+  deliverFile(csv, `pain-tracker-events-${todayStr()}.csv`, 'text/csv', 'Clinical events');
+}
+
+function buildSummaryText(){
+  if(entries.length === 0 && clinicalEvents.length === 0){
+    return 'No entries or clinical events logged yet.';
+  }
+  let text = `PAIN & CYCLE TRACKER — SUMMARY\n`;
+  text += `Generated: ${new Date().toLocaleString('en-GB')}\n\n`;
+  if(meta.coilDate){
+    const due = new Date(meta.coilDate); due.setFullYear(due.getFullYear()+COIL_LIFESPAN_YEARS);
+    const fmt = (d)=> d.toLocaleDateString('en-GB',{day:'numeric', month:'long', year:'numeric'});
+    text += `Current Mirena coil fitted: ${fmt(new Date(meta.coilDate))} (day ${coilDayCount(new Date())} at time of writing).\n`;
+    text += `Not scheduled for removal until ${fmt(due)} under standard 5-year guidance.\n`;
+  }
+  text += `CLINICAL BACKGROUND\n`;
+  text += `Stage 3 endometriosis confirmed by laparoscopy, Aug 2021 (MRI flagged July 2021).\n`;
+  text += `Sites at diagnosis: cervical, both ovaries, bladder/urinary tract.\n`;
+  text += `All disease excised at that surgery EXCEPT scar tissue adhering the right ovary to the uterus, which could not be removed. This remains the only known active site.\n`;
+  text += `Outcome of that surgery: approximately three years symptom-controlled.\n`;
+  text += `First Mirena coil expired; replacement delayed ~1 year. New coil fitted 30 March 2026. Gynae triage ~2 weeks later confirmed an endometriosis flare.\n\n`;
+
+  if(entries.length){
+    const sorted = entries.slice().sort((a,b)=> new Date(a.datetime)-new Date(b.datetime));
+    const earliest = new Date(sorted[0].datetime);
+    const latest = new Date(sorted[sorted.length-1].datetime);
+    const total = entries.length;
+    const avgPain = (entries.reduce((s,e)=>s+e.pain,0)/total).toFixed(1);
+    const bleedDates = entries.filter(e=>e.tags.includes('Bleeding')||e.tags.includes('Spotting'))
+      .sort((a,b)=> new Date(a.datetime)-new Date(b.datetime))
+      .map(e=> new Date(e.datetime).toLocaleDateString('en-GB'));
+    const bladderFlags = entries.filter(e=> e.tags.some(t=>['Urgency','Frequency','Burning','Blood in urine'].includes(t)) || e.zones.includes('bladder'))
+      .sort((a,b)=> new Date(a.datetime)-new Date(b.datetime))
+      .map(e=> `${new Date(e.datetime).toLocaleDateString('en-GB')} (${e.tags.filter(t=>['Urgency','Frequency','Burning','Blood in urine'].includes(t)).join(', ')||'bladder zone marked'})`);
+    const bowelLinked = entries.filter(e=>e.tags.includes('Worse after bowel movement')).length;
+    const severe = entries.filter(e=>e.pain>=7)
+      .sort((a,b)=> new Date(a.datetime)-new Date(b.datetime))
+      .map(e=> `${new Date(e.datetime).toLocaleDateString('en-GB')} (pain ${e.pain}, ${e.tags.join(', ')||'no tags'})`);
+
+    text += `Tracking period: ${earliest.toLocaleDateString('en-GB')} to ${latest.toLocaleDateString('en-GB')}\n`;
+    text += `Total entries logged: ${total}\n`;
+    text += `Average pain score: ${avgPain} / 10\n`;
+    text += `Days with severe pain (7+/10): ${new Set(entries.filter(e=>e.pain>=7).map(e=>dayKey(e.datetime))).size}\n`;
+    text += `Entries where pain was worse after a bowel movement: ${bowelLinked}\n\n`;
+
+    text += `BLEEDING / SPOTTING DATES (${bleedDates.length}):\n`;
+    text += bleedDates.length ? bleedDates.join(', ') + '\n\n' : 'None recorded.\n\n';
+
+    const rightOv = entries.filter(e=>e.zones.includes('pelvic_r'));
+    const rightOvSevere = rightOv.filter(e=>e.pain>=7).length;
+    const rightOvAvg = rightOv.length ? (rightOv.reduce((s,e)=>s+e.pain,0)/rightOv.length).toFixed(1) : 'n/a';
+    const otherPelvic = entries.filter(e=> !e.zones.includes('pelvic_r') && e.zones.some(z=>['pelvic_l','cervical','suprapubic','bladder'].includes(z)));
+    const otherAvg = otherPelvic.length ? (otherPelvic.reduce((s,e)=>s+e.pain,0)/otherPelvic.length).toFixed(1) : 'n/a';
+    const mechEntries = entries.filter(e=>e.tags.some(t=>MECHANICAL_TAGS.includes(t)));
+    const mechAndRight = mechEntries.filter(e=>e.zones.includes('pelvic_r')).length;
+
+    text += `RIGHT OVARY — KNOWN ADHESION SITE\n`;
+    text += `Entries marking the right ovary: ${rightOv.length} of ${total}\n`;
+    text += `Average pain when right ovary is involved: ${rightOvAvg} / 10\n`;
+    text += `Average pain at other pelvic sites: ${otherAvg} / 10\n`;
+    text += `Severe episodes (7+/10) involving the right ovary: ${rightOvSevere}\n`;
+    text += `Entries with a mechanical/adhesion-type trigger: ${mechEntries.length}, of which ${mechAndRight} also mark the right ovary\n`;
+    text += `Note: adhesion pain is typically mechanical (movement, position, bowel loading) rather than inflammatory, so normal bloods, absent fever and normal BP do not exclude it.\n\n`;
+
+    const twinges = entries.filter(e=>e.tags.includes(TWINGE_TAG));
+    if(twinges.length){
+      const twingeDays = new Set(twinges.map(e=>dayKey(e.datetime)));
+      const twingeAvg = (twinges.reduce((s,e)=>s+e.pain,0)/twinges.length).toFixed(1);
+      const twingeRight = twinges.filter(e=>e.zones.includes('pelvic_r')).length;
+      const loggedDays = new Set(entries.map(e=>dayKey(e.datetime))).size;
+      text += `TWINGES (brief, sharp, low-intensity, self-resolving)\n`;
+      text += `Recorded ${twinges.length} times across ${twingeDays.size} of ${loggedDays} logged days (average intensity ${twingeAvg} / 10).\n`;
+      text += `Of these, ${twingeRight} were localised to the right ovary.\n`;
+      text += `Recorded because frequency, not severity, is the relevant measure for this symptom. Low-intensity intermittent pain is easily lost in an average pain score while still indicating ongoing activity at the adhesion site.\n\n`;
+    }
+
+    // Duration profile
+    const withDur = entries.filter(e=>e.duration);
+    if(withDur.length){
+      const counts = {};
+      withDur.forEach(e=>{ counts[e.duration] = (counts[e.duration]||0)+1; });
+      const sustained = withDur.filter(e=>(durationHours(e.duration)||0) >= SUSTAINED_HOURS);
+      const brief = withDur.filter(e=>(durationHours(e.duration)||0) < 1);
+      const sustainedAvg = sustained.length ? (sustained.reduce((s,e)=>s+e.pain,0)/sustained.length).toFixed(1) : 'n/a';
+      text += `PAIN DURATION\n`;
+      DURATIONS.forEach(d=>{ if(counts[d.id]) text += `- ${d.label}: ${counts[d.id]}\n`; });
+      text += `Episodes lasting most of a day or longer: ${sustained.length} of ${withDur.length} (average intensity ${sustainedAvg} / 10).\n`;
+      text += `Brief episodes under an hour: ${brief.length}.\n`;
+      if(sustained.length >= brief.length && sustained.length > 0){
+        text += `Pattern: pain is more often sustained than episodic. Prolonged pain is less consistent with intermittent mechanical traction alone.\n\n`;
+      } else {
+        text += `Pattern: pain is more often short-lived and episodic than continuous.\n\n`;
+      }
+    }
+
+    // What she was doing when it started
+    const withOnset = entries.filter(e=>(e.onset||[]).length);
+    if(withOnset.length){
+      const oc = {};
+      withOnset.forEach(e=> e.onset.forEach(c=>{
+        if(!oc[c]) oc[c] = {n:0, sum:0};
+        oc[c].n++; oc[c].sum += e.pain;
+      }));
+      const ranked = Object.entries(oc).map(([c,v])=>({c, n:v.n, avg:v.sum/v.n}))
+        .sort((a,b)=> b.n - a.n);
+      text += `WHAT SHE WAS DOING AT ONSET (${withOnset.length} episodes recorded)\n`;
+      ranked.slice(0,8).forEach(r=> text += `- ${r.c}: ${r.n} episodes, average intensity ${r.avg.toFixed(1)} / 10\n`);
+      const atRest = ranked.filter(r=>['Resting, doing nothing','Lying down','Asleep / woke me up','Sitting'].includes(r.c))
+        .reduce((s,r)=>s+r.n,0);
+      const onMovement = ranked.filter(r=>['Standing up','Sitting down','Getting out of bed','Walking','Bending / reaching','Lifting something','Twisting / turning','Exercising','Coughing / sneezing'].includes(r.c))
+        .reduce((s,r)=>s+r.n,0);
+      text += `Onset while at rest: ${atRest}. Onset on movement or position change: ${onMovement}.\n`;
+      if(atRest > onMovement){
+        text += `Note: pain more often begins at rest than on movement. This is not the pattern expected of adhesion traction alone and supports assessment for an inflammatory, visceral or neuropathic contribution.\n\n`;
+      } else if(onMovement > 0){
+        text += `Note: pain more often begins on movement or position change, consistent with traction on the known right ovarian adhesion.\n\n`;
+      } else {
+        text += `\n`;
+      }
+    }
+
+    const restPain = entries.filter(e=>e.tags.some(t=>REST_PAIN_TAGS.includes(t)));
+    const easedByRest = entries.filter(e=>e.tags.some(t=>RELIEVED_BY_REST_TAGS.includes(t)));
+    const sitting = entries.filter(e=>e.tags.includes('Worse when sitting'));
+    const restAvg = restPain.length ? (restPain.reduce((s,e)=>s+e.pain,0)/restPain.length).toFixed(1) : 'n/a';
+    text += `PAIN BEHAVIOUR AT REST\n`;
+    text += `Entries where pain was worse when sitting: ${sitting.length}\n`;
+    text += `Entries where pain was worse lying still: ${restPain.length} (average pain ${restAvg} / 10)\n`;
+    text += `Entries where lying still relieved pain: ${easedByRest.length}\n`;
+    if(restPain.length > easedByRest.length && restPain.length > 0){
+      text += `Pattern: pain more often persists or worsens at complete rest than it settles. Rest pain is not typical of purely mechanical adhesion pain and warrants assessment for an inflammatory, nerve-related or visceral cause alongside the known adhesion.\n\n`;
+    } else if(easedByRest.length > 0 && easedByRest.length >= restPain.length){
+      text += `Pattern: pain more often settles with rest and is provoked by movement, position or bowel loading. This is the pattern expected of adhesion-related pain.\n\n`;
+    } else {
+      text += `Not enough rest/position data logged yet to comment on this pattern.\n\n`;
+    }
+
+    const actResults = analyseActivities();
+    text += `ACTIVITY ASSOCIATIONS\n`;
+    if(actResults.length === 0){
+      text += `Not enough activity data logged yet for a meaningful comparison (needs at least ${MIN_DAYS_EACH_SIDE} days both with and without a given activity).\n\n`;
+    } else {
+      text += `Average worst daily pain on days with an activity vs days without. Day-level comparison.\n`;
+      actResults.slice(0,10).forEach(r=>{
+        const sign = r.diff > 0 ? '+' : '';
+        text += `- ${r.activity}: ${r.avgWith.toFixed(1)} with vs ${r.avgWithout.toFixed(1)} without (${sign}${r.diff.toFixed(1)}) over ${r.daysWith} days with / ${r.daysWithout} without${r.strong ? ' [consistent]' : ''}\n`;
+        if(r.nextDayDiff !== null && Math.abs(r.nextDayDiff) >= 1){
+          text += `    next-day effect: ${r.nextDayDiff > 0 ? '+' : ''}${r.nextDayDiff.toFixed(1)}\n`;
+        }
+      });
+      text += `Interpretation limits: self-reported, unblinded, and confounded by reverse causation (pain limits activity, so lower pain alongside an activity may reflect capability rather than benefit). Offered as a pattern to test, not a causal claim.\n\n`;
+    }
+
+    text += `BLADDER SYMPTOM FLAGS — recurrence watch (${bladderFlags.length}):\n`;
+    text += bladderFlags.length ? bladderFlags.join('\n') + '\n\n' : 'None recorded — consistent with the excised site staying clear.\n\n';
+
+    text += `SEVERE PAIN EPISODES (7+/10):\n`;
+    text += severe.length ? severe.join('\n') + '\n\n' : 'None recorded.\n\n';
+  } else {
+    text += 'No daily entries logged yet.\n\n';
+  }
+
+  if(clinicalEvents.length){
+    text += `CLINICAL EVENTS (${clinicalEvents.length}):\n`;
+    clinicalEvents.slice().sort((a,b)=> new Date(a.date)-new Date(b.date)).forEach(ev=>{
+      text += `${new Date(ev.date).toLocaleDateString('en-GB')} — ${ev.type}${ev.outcome ? ' — ' + ev.outcome : ''}${ev.notes ? ' — ' + ev.notes : ''}\n`;
+    });
+    text += '\n';
+  } else {
+    text += 'No clinical events logged yet.\n\n';
+  }
+
+  text += `Full entry-by-entry detail is in the CSV exports.\n`;
+  return text;
+}
+
+function exportSummary(){
+  deliverFile(buildSummaryText(), `pain-tracker-summary-${todayStr()}.txt`, 'text/plain', 'Summary for appointment');
+}
+
+function buildClaudePayload(){
+  const payload = {
+    generated: new Date().toISOString(),
+    coilFitted: meta.coilDate || null,
+    coilDayToday: coilDayCount(new Date()),
+    coilDueForRemoval: meta.coilDate ? (()=>{ const d=new Date(meta.coilDate); d.setFullYear(d.getFullYear()+COIL_LIFESPAN_YEARS); return d.toISOString().slice(0,10); })() : null,
+    diagnosis: 'Stage 3 endometriosis, laparoscopy Aug 2021 — cervical, both ovaries, bladder/urinary tract. All excised at that surgery EXCEPT scar tissue adhering the right ovary to the uterus (unremovable, still present, only known active site). Approx 3 pain-free years followed. Coil replaced 30 March 2026; flare confirmed at gynae triage 2 weeks later.',
+    entries: entries,   // each entry may carry an 'activities' array
+    clinicalEvents: clinicalEvents
+  };
+  return `Here's my pain tracker data — please read the pattern:\n\n${JSON.stringify(payload, null, 2)}`;
+}
+
+function copyForClaude(){
+  const text = buildClaudePayload();
+  const btn = document.getElementById('copyClaudeBtn');
+  const original = 'Copy data for Claude';
+  // No await before writeText — Safari drops the user gesture otherwise
+  if(navigator.clipboard && navigator.clipboard.writeText){
+    navigator.clipboard.writeText(text).then(()=>{
+      btn.textContent = 'Copied ✓';
+      setTimeout(()=>{ btn.textContent = original; }, 2000);
+    }).catch(()=>{
+      showTextFallback('Data for Claude', text, 'tracker-data.json');
+    });
+  } else {
+    showTextFallback('Data for Claude', text, 'tracker-data.json');
+  }
+}
+
+// ---------- init ----------
+async function init(){
+  entries = await loadEntries();
+  meta = await loadMeta();
+  clinicalEvents = await loadEvents();
+  entries.sort((a,b)=> new Date(b.datetime) - new Date(a.datetime));
+  clinicalEvents.sort((a,b)=> new Date(b.date) - new Date(a.date));
+
+  document.getElementById('coilDate').value = meta.coilDate || COIL_FITTED_DEFAULT;
+  document.getElementById('coilDate').onchange = async (e)=>{
+    if(!e.target.value) return;
+    meta.coilDate = e.target.value;
+    await saveMetaToStorage();
+    document.getElementById('coilEdit').style.display = 'none';
+    document.getElementById('editCoilBtn').style.display = '';
+    renderAll();
+  };
+  document.getElementById('editCoilBtn').onclick = ()=>{
+    document.getElementById('coilEdit').style.display = '';
+    document.getElementById('editCoilBtn').style.display = 'none';
+  };
+  document.getElementById('cancelCoilBtn').onclick = ()=>{
+    document.getElementById('coilDate').value = meta.coilDate;
+    document.getElementById('coilEdit').style.display = 'none';
+    document.getElementById('editCoilBtn').style.display = '';
+  };
+
+  stampNow(true);
+  document.getElementById('entryDate').onchange = renderDateReadback;
+
+  const paintPainBand = (v)=>{
+    const num = document.getElementById('painNum');
+    const tag = document.getElementById('painBandTag');
+    num.textContent = v;
+    num.style.color = painBand(v).colour === '#C9C2B4' ? 'var(--ink)' : painColor(v);
+    tag.textContent = painLabel(v);
+    tag.style.background = painColor(v);
+    tag.style.color = painInk(v);
+  };
+  document.getElementById('painSlider').oninput = (e)=> paintPainBand(e.target.value);
+  paintPainBand(document.getElementById('painSlider').value);
+
+  document.getElementById('viewFrontBtn').onclick = ()=>{ currentView='front'; renderBodyMap(); renderZoneChips(); };
+  document.getElementById('viewBackBtn').onclick = ()=>{ currentView='back'; renderBodyMap(); renderZoneChips(); };
+
+  document.getElementById('saveBtn').onclick = handleSave;
+  document.getElementById('newEntryBtn').onclick = startNewEntry;
+  document.getElementById('closeEntryBtn').onclick = ()=>{
+    editingId = null;
+    clearForm();
+    stampNow(true);
+    setEditMode(null);
+    showEntryCard(false);
+    document.getElementById('todayCard').scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  document.getElementById('cancelEditBtn').onclick = ()=>{
+    editingId = null;
+    clearForm();
+    stampNow(true);
+    setEditMode(null);
+    showEntryCard(false);
+    document.getElementById('todayCard').scrollIntoView({behavior:'smooth', block:'start'});
+  };
+  document.getElementById('saveEventBtn').onclick = handleSaveEvent;
+  document.getElementById('exportCsvBtn').onclick = exportCsv;
+  document.getElementById('exportEventsCsvBtn').onclick = exportEventsCsv;
+  document.getElementById('exportSummaryBtn').onclick = exportSummary;
+  document.getElementById('copyClaudeBtn').onclick = copyForClaude;
+  document.getElementById('backupBtn').onclick = ()=>{
+    showTextFallback('Backup - keep this safe', buildClaudePayload(), 'tracker-backup.json');
+  };
+  document.getElementById('importBtn').onclick = async ()=>{
+    const out = document.getElementById('importResult');
+    const btn = document.getElementById('importBtn');
+    btn.disabled = true; btn.textContent = 'Restoring...';
+    try{
+      const r = await importBackup(document.getElementById('importBox').value);
+      out.style.color = 'var(--sage)';
+      out.textContent = `Restored ${r.addedEntries} entries and ${r.addedEvents} clinical events.` +
+        (r.skipped ? ` ${r.skipped} were already here and were skipped.` : '') +
+        (r.saved ? '' : ' Warning: could not write to storage, so this will not survive a reload.');
+      document.getElementById('importBox').value = '';
+      renderAll();
+      renderEventList();
+    }catch(e){
+      out.style.color = 'var(--burgundy)';
+      out.textContent = e.message;
+    }
+    btn.disabled = false; btn.textContent = 'Restore from backup';
+  };
+  document.getElementById('rescueBtn').onclick = ()=>{
+    showTextFallback('Your data - save this somewhere safe', buildClaudePayload(), 'tracker-backup.json');
+  };
+  document.getElementById('viewTextBtn').onclick = ()=>{
+    showTextFallback('Summary for appointment', buildSummaryText(), `pain-tracker-summary-${todayStr()}.txt`);
+  };
+
+  document.getElementById('prevMonth').onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()-1); renderCalendar(); };
+  document.getElementById('nextMonth').onclick = ()=>{ calMonth.setMonth(calMonth.getMonth()+1); renderCalendar(); };
+
+  // Prove storage works now, rather than discovering it at save time
+  await persist('ep_probe', {t: Date.now()});
+
+  // Seed data baked in at build time takes effect only when this version is empty
+  if(SEED_DATA && entries.length === 0 && clinicalEvents.length === 0){
+    try{
+      const r = await importBackup(typeof SEED_DATA === 'string' ? SEED_DATA : JSON.stringify(SEED_DATA));
+      if(r.addedEntries || r.addedEvents){
+        const out = document.getElementById('importResult');
+        if(out){
+          out.style.color = 'var(--sage)';
+          out.textContent = `Carried ${r.addedEntries} entries and ${r.addedEvents} clinical events over from your previous version.`;
+        }
+      }
+    }catch(e){ console.error('seed import failed', e); }
+  }
+
+  // If this version of the tracker has no data but a backup exists in this browser,
+  // it is almost certainly a new version rather than genuinely empty history.
+  if(entries.length === 0 && clinicalEvents.length === 0){
+    try{
+      const stashed = window.localStorage.getItem('paintracker_lastBackup');
+      if(stashed){
+        const box = document.getElementById('importBox');
+        const out = document.getElementById('importResult');
+        if(box && out){
+          box.value = stashed;
+          out.style.color = 'var(--clay)';
+          out.textContent = 'A backup from a previous version was found on this device and loaded into the box above. Press Restore to bring it in.';
+        }
+      }
+    }catch(e){}
+  }
+
+  renderTagChips();
+  renderBodyMap();
+  renderZoneChips();
+  renderActivityChips();
+  renderDurationChips();
+  renderOnsetChips();
+  renderOutcomeChips();
+  renderEventList();
+  renderAll();
+
+  // Keep a rolling backup in browser storage, independent of the main store.
+  // Survives host-storage failures within the same browser.
+  window.addEventListener('pagehide', ()=>{
+    try{
+      if(entries.length) window.localStorage.setItem('paintracker_lastBackup', buildClaudePayload());
+    }catch(e){}
+  });
+
+  // Re-stamp the date and time whenever the page comes back into view.
+  // On a phone this is the normal case: backgrounded, not closed.
+  document.addEventListener('visibilitychange', ()=>{
+    if(!document.hidden) refreshForNow();
+  });
+  window.addEventListener('focus', refreshForNow);
+  window.addEventListener('pageshow', refreshForNow);   // iOS back-forward cache
+
+  // Catch the date rolling over while the page sits open
+  let lastSeenDay = todayStr();
+  setInterval(()=>{
+    const today = todayStr();
+    if(today !== lastSeenDay){
+      lastSeenDay = today;
+      refreshForNow();
+    } else {
+      stampNow(false);   // keep the time current
+    }
+  }, 60000);
+
+  // Redraw the chart when the phone is rotated or the view resizes
+  let resizeTimer;
+  window.addEventListener('resize', ()=>{
+    clearTimeout(resizeTimer);
+    resizeTimer = setTimeout(renderChart, 150);
+  });
+  window.addEventListener('orientationchange', ()=> setTimeout(renderChart, 250));
+}
+init();
+
+// Register the service worker so the app works offline and can be installed.
+// Harmless if it fails - the tracker works without it.
+if('serviceWorker' in navigator){
+  window.addEventListener('load', ()=>{
+    navigator.serviceWorker.register('sw.js').catch(()=>{});
+  });
+}
+</script>
+</body>
+</html>
